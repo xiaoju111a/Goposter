@@ -1,0 +1,4 @@
+
+# Go installation files
+*.tar.gz
+go1.*.linux-amd64.tar.gz

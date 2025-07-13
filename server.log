@@ -1002,3 +1002,19 @@ Web界面: http://0.0.0.0:9090
 2025/07/13 23:36:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
 2025/07/13 23:36:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.078561362s
 2025/07/13 23:36:44 SMTP中继连接测试成功
+2025/07/13 23:37:42 测试SMTP中继连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:37:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:37:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 1.989028127s
+2025/07/13 23:37:44 SMTP中继连接测试成功
+2025/07/13 23:38:42 测试SMTP中继连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:38:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:38:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.139363264s
+2025/07/13 23:38:44 SMTP中继连接测试成功
+2025/07/13 23:39:42 测试SMTP中继连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:39:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:39:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.210152228s
+2025/07/13 23:39:44 SMTP中继连接测试成功
+2025/07/13 23:40:42 测试SMTP中继连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:40:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:40:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.130082403s
+2025/07/13 23:40:44 SMTP中继连接测试成功
