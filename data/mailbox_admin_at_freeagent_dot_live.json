@@ -1,0 +1,13 @@
+[
+  {
+    "From": "test@freeagent.live",
+    "To": "admin@freeagent.live",
+    "Subject": "内部测试2",
+    "Body": "这是修复后的内部测试邮件",
+    "Date": "Sat, 12 Jul 2025 21:04:39 +0800",
+    "ID": "",
+    "id": "admin@freeagent.live_0_1752402905",
+    "timestamp": "2025-07-13T18:35:05.199038726+08:00",
+    "flags": []
+  }
+]

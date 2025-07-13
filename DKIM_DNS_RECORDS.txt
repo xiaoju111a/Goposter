@@ -1,0 +1,46 @@
+# DKIM DNS记录配置 - ygocard.org
+
+## 必需的DNS TXT记录
+
+### 1. SPF记录
+主机名: @  (或者 ygocard.org)
+类型: TXT
+值: v=spf1 a mx ~all
+
+### 2. DKIM记录  
+主机名: default._domainkey
+类型: TXT
+值: v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn3gf0VcS3wb52ZxG9i26mHYCX3LTknyHSzhsb42uOz5SQF5p2OVvZm1uW9cx4J39UJnnbjlI7YhWVAbTEhtaw4LpCR9Wk76zJ4dJqx3y3twzbbHnXmAlNdi6wnyqcRD0w41HXhivDNVQnpPbY1Zw4zCDdGDXT/IqQ916x6kYfgV8IgYdo7/qv8wwDPMEuVb7Dr8qyF/RbYuS6Y+Eot+yV8hstN5aeCq0Ke3Jc9AMZ0Q+h1gmLdQVNFH7h/j2zFJLXDWxsJ6rVdaogkvNE9LZ+K84dB9zozZkJR6N4JBEnv2DbAxEguu7yQlrjpoSCN4qqyKYJc2WN/STICuSS2hKOQIDAQAB
+
+### 3. DMARC记录
+主机名: _dmarc
+类型: TXT  
+值: v=DMARC1; p=none; rua=mailto:dmarc@ygocard.org; ruf=mailto:dmarc@ygocard.org; fo=1
+
+## 验证命令
+
+添加DNS记录后，使用以下命令验证：
+
+```bash
+# 验证SPF记录
+nslookup -type=TXT ygocard.org
+
+# 验证DKIM记录
+nslookup -type=TXT default._domainkey.ygocard.org
+
+# 验证DMARC记录
+nslookup -type=TXT _dmarc.ygocard.org
+```
+
+## 在线验证工具
+
+- MXToolbox: https://mxtoolbox.com/dkim.aspx
+- DKIM验证: https://www.mail-tester.com/dkim/
+- 综合检测: https://www.mail-tester.com/
+
+## 注意事项
+
+1. DNS记录生效需要时间，通常几分钟到几小时
+2. 某些DNS提供商可能需要将长TXT记录分段输入
+3. 确保记录名称准确，特别是下划线和点号的位置
+4. DMARC建议先使用p=none进行监控，稳定后改为p=quarantine或p=reject
