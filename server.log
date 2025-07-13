@@ -978,3 +978,7 @@ Web界面: http://0.0.0.0:9090
 2025/07/13 23:30:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
 2025/07/13 23:30:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.397977733s
 2025/07/13 23:30:45 SMTP中继连接测试成功
+2025/07/13 23:31:42 测试SMTP中继连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:31:42 [SMTP中继] 使用TLS连接: email-smtp.us-east-1.amazonaws.com:587
+2025/07/13 23:31:44 [SMTP中继] TLS连接建立成功: email-smtp.us-east-1.amazonaws.com:587, 耗时: 2.130136914s
+2025/07/13 23:31:44 SMTP中继连接测试成功
