@@ -37,7 +37,7 @@ type DatabasePool struct {
 // RedisPool Redis连接池
 type RedisPool struct {
 	client   *redis.Client
-	pool     *redis.Pool
+	// pool     *redis.Pool // 临时禁用
 	maxConns int
 	maxIdle  int
 	timeout  time.Duration

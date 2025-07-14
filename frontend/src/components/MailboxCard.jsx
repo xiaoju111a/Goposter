@@ -3,7 +3,7 @@ import { api } from '../utils/api.js';
 import { cacheManager } from '../utils/cache.js';
 import EmailItem from './EmailItem.jsx';
 
-const MailboxCard = ({ mailbox }) => {
+const MailboxCard = ({ mailbox, selected = false, onSelect }) => {
     const [emails, setEmails] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -47,8 +47,16 @@ const MailboxCard = ({ mailbox }) => {
     };
 
     return (
-        <div className="mailbox-card">
+        <div className={`mailbox-card ${selected ? 'selected' : ''}`}>
             <div className="mailbox-header">
+                {onSelect && (
+                    <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(e) => onSelect(e.target.checked)}
+                        className="mailbox-checkbox"
+                    />
+                )}
                 <div className="mailbox-name">{mailbox}</div>
                 <div className="email-count">{emails.length}</div>
             </div>

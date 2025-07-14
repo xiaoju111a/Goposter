@@ -24,6 +24,48 @@ type Email struct {
 	ID      string // 添加邮件ID字段
 }
 
+// 临时添加缺失的类型定义
+type SearchRequest struct {
+	Query      string            `json:"query"`
+	Mailbox    string            `json:"mailbox,omitempty"`
+	From       string            `json:"from,omitempty"`
+	To         string            `json:"to,omitempty"`
+	Subject    string            `json:"subject,omitempty"`
+	DateStart  string            `json:"date_start,omitempty"`
+	DateEnd    string            `json:"date_end,omitempty"`
+	HasAttachment *bool          `json:"has_attachment,omitempty"`
+	IsRead     *bool             `json:"is_read,omitempty"`
+	Priority   string            `json:"priority,omitempty"`
+	Tags       []string          `json:"tags,omitempty"`
+	Size       int               `json:"size"`
+	From_      int               `json:"from"`
+	Sort       string            `json:"sort,omitempty"`
+	Highlight  bool              `json:"highlight"`
+}
+
+type SearchResult struct {
+	Total    int64           `json:"total"`
+	Emails   []EmailDocument `json:"emails"`
+	Took     int             `json:"took"`
+	TimedOut bool            `json:"timed_out"`
+}
+
+type EmailDocument struct {
+	ID          string    `json:"id"`
+	Mailbox     string    `json:"mailbox"`
+	From        string    `json:"from"`
+	To          string    `json:"to"`
+	Subject     string    `json:"subject"`
+	Body        string    `json:"body"`
+	Timestamp   time.Time `json:"timestamp"`
+	HasAttachment bool    `json:"has_attachment"`
+	IsRead      bool      `json:"is_read"`
+	Priority    string    `json:"priority"`
+	Size        int64     `json:"size"`
+	Tags        []string  `json:"tags"`
+	Headers     map[string]string `json:"headers"`
+}
+
 type MailServer struct {
 	domain         string
 	hostname       string
@@ -35,7 +77,7 @@ type MailServer struct {
 	emailAuth      *EmailAuth
 	imapServer     *IMAPServer
 	relayManager   *SMTPRelayManager
-	esClient       *ElasticsearchClient
+	// esClient       *ElasticsearchClient // 临时禁用
 }
 
 func NewMailServer(domain, hostname string) *MailServer {
@@ -75,8 +117,8 @@ func NewMailServer(domain, hostname string) *MailServer {
 	// 创建IMAP服务器
 	ms.imapServer = NewIMAPServer(ms)
 	
-	// 初始化ElasticSearch客户端
-	ms.esClient = NewElasticsearchClient()
+	// 初始化ElasticSearch客户端 (临时禁用)
+	// ms.esClient = NewElasticsearchClient()
 	
 	return ms
 }
@@ -91,8 +133,8 @@ func (ms *MailServer) AddEmail(to string, email Email) {
 	// 存储邮件
 	ms.storage.AddEmail(to, email)
 	
-	// 索引到ElasticSearch
-	ms.indexEmailToElastic(to, email)
+	// 索引到ElasticSearch (临时禁用)
+	// ms.indexEmailToElastic(to, email)
 	
 	// 记录处理日志
 	log.Printf("邮件已接收: %s -> %s", email.From, to)
@@ -2251,24 +2293,29 @@ func (ms *MailServer) apiSearch(w http.ResponseWriter, r *http.Request) {
 		searchReq.Size = 100
 	}
 	
-	// 检查ElasticSearch是否可用
-	if !ms.esClient.IsEnabled() {
+	// 检查ElasticSearch是否可用 (临时禁用)
+	// if !ms.esClient.IsEnabled() {
 		// 回退到简单搜索
 		result := ms.fallbackSearch(searchReq)
 		jsonData, _ := json.Marshal(result)
 		w.Write(jsonData)
 		return
-	}
+	// }
 	
-	// 使用ElasticSearch搜索
-	result, err := ms.esClient.SearchEmails(searchReq)
+	// 使用ElasticSearch搜索 (临时禁用)
+	// result, err := ms.esClient.SearchEmails(searchReq)
+	// if err != nil {
+	//	log.Printf("搜索失败: %v", err)
+	//	// 回退到简单搜索
+	//	result = ms.fallbackSearch(searchReq)
+	// }
+	
+	jsonData, err := json.Marshal(result)
 	if err != nil {
-		log.Printf("搜索失败: %v", err)
-		// 回退到简单搜索
-		result = ms.fallbackSearch(searchReq)
+		log.Printf("序列化搜索结果失败: %v", err)
+		http.Error(w, "内部错误", http.StatusInternalServerError)
+		return
 	}
-	
-	jsonData, _ := json.Marshal(result)
 	w.Write(jsonData)
 }
 
@@ -2474,13 +2521,13 @@ func parseEmailDate(dateStr string) time.Time {
 	return time.Now()
 }
 
-// indexEmailToElastic 将邮件索引到ElasticSearch
+// indexEmailToElastic 将邮件索引到ElasticSearch (临时禁用)
 func (ms *MailServer) indexEmailToElastic(mailbox string, email Email) {
-	if !ms.esClient.IsEnabled() {
+	// if !ms.esClient.IsEnabled() {
 		return
-	}
+	// }
 	
-	doc := EmailDocument{
+	_ = EmailDocument{
 		ID:        email.ID,
 		Mailbox:   mailbox,
 		From:      email.From,
@@ -2497,7 +2544,7 @@ func (ms *MailServer) indexEmailToElastic(mailbox string, email Email) {
 		Headers:       map[string]string{},
 	}
 	
-	if err := ms.esClient.IndexEmail(doc); err != nil {
-		log.Printf("索引邮件到ElasticSearch失败: %v", err)
-	}
+	// if err := ms.esClient.IndexEmail(doc); err != nil {
+	//	log.Printf("索引邮件到ElasticSearch失败: %v", err)
+	// }
 }

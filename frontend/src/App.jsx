@@ -12,9 +12,11 @@ const App = () => {
     const [mailboxes, setMailboxes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create'
+    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats'
     const [isAuthenticated, setIsAuthenticated] = useState(auth.isAuthenticated());
     const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedMailboxes, setSelectedMailboxes] = useState([]);
 
     const loadMailboxes = useCallback(async () => {
         try {
@@ -124,6 +126,13 @@ const App = () => {
                         <span className="nav-icon">➕</span>
                         <span className="nav-text">创建邮箱</span>
                     </button>
+                    <button 
+                        className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('stats')}
+                    >
+                        <span className="nav-icon">📊</span>
+                        <span className="nav-text">统计面板</span>
+                    </button>
                 </nav>
 
                 <div className="sidebar-footer">
@@ -147,6 +156,7 @@ const App = () => {
                         {activeTab === 'mailboxes' && '📮 邮箱管理'}
                         {activeTab === 'send' && '📤 发送邮件'}
                         {activeTab === 'create' && '➕ 创建邮箱'}
+                        {activeTab === 'stats' && '📊 统计面板'}
                     </div>
                     <button onClick={handleRefresh} className="refresh-btn" title="刷新数据">
                         <span className="refresh-icon">🔄</span>
@@ -158,6 +168,38 @@ const App = () => {
                     {activeTab === 'mailboxes' && (
                         <>
                             <Stats mailboxes={mailboxes} totalEmails={totalEmails} />
+                            
+                            {/* 搜索和筛选 */}
+                            <div className="toolbar">
+                                <div className="search-container">
+                                    <input
+                                        type="text"
+                                        placeholder="搜索邮箱..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="search-input"
+                                    />
+                                    <span className="search-icon">🔍</span>
+                                </div>
+                                
+                                {selectedMailboxes.length > 0 && (
+                                    <div className="batch-actions">
+                                        <span className="selected-count">已选择 {selectedMailboxes.length} 个邮箱</span>
+                                        <button 
+                                            className="batch-btn danger"
+                                            onClick={() => {
+                                                if (confirm(`确定要删除 ${selectedMailboxes.length} 个邮箱吗？`)) {
+                                                    // TODO: 实现批量删除
+                                                    setSelectedMailboxes([]);
+                                                }
+                                            }}
+                                        >
+                                            批量删除
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
                             {loading ? (
                                 <div className="loading-container">
                                     <div className="loading-spinner"></div>
@@ -167,15 +209,31 @@ const App = () => {
                                 <div className="mailbox-container">
                                     <div className="section-header">
                                         <h3>邮箱列表</h3>
-                                        <span className="mailbox-count">{mailboxes.length} 个邮箱</span>
+                                        <span className="mailbox-count">
+                                            {searchQuery ? 
+                                                `找到 ${mailboxes.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase())).length} 个邮箱` :
+                                                `${mailboxes.length} 个邮箱`
+                                            }
+                                        </span>
                                     </div>
                                     <div className="mailbox-grid">
-                                        {mailboxes.map((mailbox, index) => (
-                                            <MailboxCard 
-                                                key={`${mailbox}-${refreshKey}`} 
-                                                mailbox={mailbox} 
-                                            />
-                                        ))}
+                                        {mailboxes
+                                            .filter(mailbox => mailbox.toLowerCase().includes(searchQuery.toLowerCase()))
+                                            .map((mailbox, index) => (
+                                                <MailboxCard 
+                                                    key={`${mailbox}-${refreshKey}`} 
+                                                    mailbox={mailbox}
+                                                    selected={selectedMailboxes.includes(mailbox)}
+                                                    onSelect={(selected) => {
+                                                        if (selected) {
+                                                            setSelectedMailboxes(prev => [...prev, mailbox]);
+                                                        } else {
+                                                            setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
+                                                        }
+                                                    }}
+                                                />
+                                            ))
+                                        }
                                     </div>
                                 </div>
                             )}
@@ -188,6 +246,51 @@ const App = () => {
 
                     {activeTab === 'create' && (
                         <CreateMailbox onMailboxCreated={handleMailboxCreated} />
+                    )}
+
+                    {activeTab === 'stats' && (
+                        <div className="stats-dashboard">
+                            <div className="stats-overview">
+                                <Stats mailboxes={mailboxes} totalEmails={totalEmails} />
+                            </div>
+                            
+                            <div className="stats-charts">
+                                <div className="chart-container">
+                                    <h3>邮箱活跃度</h3>
+                                    <div className="chart-placeholder">
+                                        📊 图表功能开发中...
+                                    </div>
+                                </div>
+                                
+                                <div className="chart-container">
+                                    <h3>邮件流量趋势</h3>
+                                    <div className="chart-placeholder">
+                                        📈 图表功能开发中...
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="recent-activity">
+                                <h3>最近活动</h3>
+                                <div className="activity-list">
+                                    <div className="activity-item">
+                                        <span className="activity-icon">📧</span>
+                                        <span className="activity-text">新邮件接收</span>
+                                        <span className="activity-time">刚刚</span>
+                                    </div>
+                                    <div className="activity-item">
+                                        <span className="activity-icon">📤</span>
+                                        <span className="activity-text">邮件发送成功</span>
+                                        <span className="activity-time">5分钟前</span>
+                                    </div>
+                                    <div className="activity-item">
+                                        <span className="activity-icon">➕</span>
+                                        <span className="activity-text">创建新邮箱</span>
+                                        <span className="activity-time">10分钟前</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

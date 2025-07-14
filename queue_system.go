@@ -255,7 +255,7 @@ func (eq *EmailQueue) processIncomingEmail(task *EmailTask) error {
 	log.Printf("Processing incoming email: %s -> %s", task.From, task.Mailbox)
 	
 	// 存储邮件数据
-	emailData := map[string]interface{}{
+	_ = map[string]interface{}{
 		"from":    task.From,
 		"to":      task.To,
 		"subject": task.Subject,

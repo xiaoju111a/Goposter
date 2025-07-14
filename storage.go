@@ -244,7 +244,7 @@ func (es *EmailStorage) saveMailboxToFile(mailbox string) error {
 	for i, email := range emails {
 		storedEmails[i] = StoredEmail{
 			Email:     email,
-			ID:        fmt.Sprintf("%s_%d_%d", mailbox, i, time.Now().Unix()),
+			ID:        email.ID, // 保持原有ID，不重新生成
 			Timestamp: time.Now(),
 			Flags:     []string{},
 		}
@@ -304,7 +304,12 @@ func (es *EmailStorage) loadMailboxFromFile(filename string) {
 	// 转换为普通邮件格式
 	emails := make([]Email, len(storedEmails))
 	for i, stored := range storedEmails {
-		emails[i] = stored.Email
+		email := stored.Email
+		// 如果StoredEmail有ID，使用它；否则使用Email的ID
+		if stored.ID != "" {
+			email.ID = stored.ID
+		}
+		emails[i] = email
 	}
 	
 	es.emails[mailbox] = emails

@@ -229,7 +229,7 @@ func (mm *MemoryMonitor) analyzeMemoryUsage() {
 			Level:     "warning",
 			Message:   fmt.Sprintf("Memory usage is %.2f%%, exceeding warning threshold %.2f%%", usagePercent, mm.config.WarningThreshold),
 			Timestamp: time.Now(),
-			Metrics:   metrics,
+			Metrics:   *metrics,
 			Resolved:  false,
 		}
 		mm.alerts.addAlert(alert)
@@ -241,7 +241,7 @@ func (mm *MemoryMonitor) analyzeMemoryUsage() {
 			Level:     "critical",
 			Message:   fmt.Sprintf("Memory usage is %.2f%%, exceeding critical threshold %.2f%%", usagePercent, mm.config.CriticalThreshold),
 			Timestamp: time.Now(),
-			Metrics:   metrics,
+			Metrics:   *metrics,
 			Resolved:  false,
 		}
 		mm.alerts.addAlert(alert)
@@ -441,7 +441,7 @@ func (mm *MemoryMonitor) GetMetrics() MemoryMetrics {
 	mm.mu.RLock()
 	defer mm.mu.RUnlock()
 	
-	return mm.metrics
+	return *mm.metrics
 }
 
 // GetAlerts 获取告警
