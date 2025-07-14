@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .debug-section h3 { margin-top: 0; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Debug Tool</h1>
+    
+    <div class="debug-section">
+        <h3>API连接测试</h3>
+        <button onclick="testAPI()">测试API连接</button>
+        <button onclick="testProxy()">测试代理</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>前端状态检查</h3>
+        <button onclick="checkFrontend()">检查前端状态</button>
+        <div id="frontend-result"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>浏览器环境检查</h3>
+        <button onclick="checkBrowser()">检查浏览器环境</button>
+        <div id="browser-result"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<div class="info">测试中...</div>';
+            
+            try {
+                // 测试直接API调用
+                const response = await fetch('/api/mailboxes');
+                log('api-result', `API响应状态: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('api-result', `API返回数据: ${JSON.stringify(data)}`, 'success');
+                    log('api-result', `数据类型: ${Array.isArray(data) ? '数组' : typeof data}`, 'info');
+                    log('api-result', `数据长度: ${data.length || 0}`, 'info');
+                } else {
+                    const errorText = await response.text();
+                    log('api-result', `API错误: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('api-result', `请求失败: ${error.message}`, 'error');
+                console.error('API测试失败:', error);
+            }
+        }
+
+        async function testProxy() {
+            const resultDiv = document.getElementById('api-result');
+            
+            try {
+                // 测试代理配置
+                const response = await fetch('http://localhost:9090/api/mailboxes');
+                log('api-result', `直接后端响应: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('api-result', `后端数据: ${JSON.stringify(data)}`, 'success');
+                }
+            } catch (error) {
+                log('api-result', `后端直连失败: ${error.message}`, 'error');
+            }
+        }
+
+        function checkFrontend() {
+            const resultDiv = document.getElementById('frontend-result');
+            resultDiv.innerHTML = '';
+            
+            log('frontend-result', `当前URL: ${window.location.href}`, 'info');
+            log('frontend-result', `User Agent: ${navigator.userAgent}`, 'info');
+            log('frontend-result', `本地存储项:`, 'info');
+            
+            // 检查本地存储
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                log('frontend-result', `  - ${key}: ${value}`, 'info');
+            }
+            
+            // 检查认证状态
+            const accessToken = localStorage.getItem('access_token');
+            const userEmail = localStorage.getItem('userEmail');
+            log('frontend-result', `认证状态: ${accessToken ? '已认证' : '未认证'}`, accessToken ? 'success' : 'error');
+            log('frontend-result', `用户邮箱: ${userEmail || '未设置'}`, 'info');
+        }
+
+        function checkBrowser() {
+            const resultDiv = document.getElementById('browser-result');
+            resultDiv.innerHTML = '';
+            
+            log('browser-result', `浏览器: ${navigator.appName}`, 'info');
+            log('browser-result', `版本: ${navigator.appVersion}`, 'info');
+            log('browser-result', `平台: ${navigator.platform}`, 'info');
+            log('browser-result', `Cookie启用: ${navigator.cookieEnabled}`, 'info');
+            log('browser-result', `在线状态: ${navigator.onLine}`, 'info');
+            log('browser-result', `JavaScript启用: 是`, 'success');
+            
+            // 检查控制台错误
+            log('browser-result', '请检查浏览器控制台是否有错误信息', 'info');
+        }
+    </script>
+</body>
+</html>

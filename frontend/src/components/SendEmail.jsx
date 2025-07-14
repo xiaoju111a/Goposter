@@ -59,69 +59,70 @@ const SendEmail = ({ userEmail = '' }) => {
     <div className="send-email-container">
       <h3>📧 发送邮件</h3>
       <form onSubmit={handleSubmit} className="send-email-form">
-        <div className="form-group">
-          <label htmlFor="from">发件人 *</label>
-          <input
-            type="email"
-            id="from"
-            value={emailData.from}
-            onChange={handleChange('from')}
-            placeholder="your-name@freeagent.live"
-            required
-          />
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="from">发件人 *</label>
+            <input
+              type="email"
+              id="from"
+              value={emailData.from}
+              onChange={handleChange('from')}
+              placeholder="your-name@freeagent.live"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="to">收件人 *</label>
+            <input
+              type="email"
+              id="to"
+              value={emailData.to}
+              onChange={handleChange('to')}
+              placeholder="recipient@example.com"
+              required
+            />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="to">收件人 *</label>
-          <input
-            type="email"
-            id="to"
-            value={emailData.to}
-            onChange={handleChange('to')}
-            placeholder="recipient@example.com"
-            required
-          />
+        <div className="form-row single">
+          <div className="form-group">
+            <label htmlFor="subject">主题 *</label>
+            <input
+              type="text"
+              id="subject"
+              value={emailData.subject}
+              onChange={handleChange('subject')}
+              placeholder="邮件主题"
+              required
+            />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="subject">主题 *</label>
-          <input
-            type="text"
-            id="subject"
-            value={emailData.subject}
-            onChange={handleChange('subject')}
-            placeholder="邮件主题"
-            required
-          />
+        <div className="form-row content">
+          <div className="form-group">
+            <label htmlFor="body">邮件内容 *</label>
+            <textarea
+              id="body"
+              value={emailData.body}
+              onChange={handleChange('body')}
+              placeholder="请输入邮件内容..."
+              rows="12"
+              required
+              className="email-content-textarea"
+            />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="body">邮件内容 *</label>
-          <textarea
-            id="body"
-            value={emailData.body}
-            onChange={handleChange('body')}
-            placeholder="请输入邮件内容..."
-            rows="8"
-            required
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '14px',
-              resize: 'vertical'
-            }}
-          />
+        <div className="form-row single">
+          <button 
+            type="submit" 
+            disabled={sending}
+            className="send-btn"
+          >
+            {sending ? '发送中...' : '📤 发送邮件'}
+          </button>
         </div>
-
-        <button 
-          type="submit" 
-          disabled={sending}
-          className="send-btn"
-        >
-          {sending ? '发送中...' : '📤 发送邮件'}
-        </button>
 
         {message && (
           <div className={`message ${message.includes('成功') ? 'success' : 'error'}`}>

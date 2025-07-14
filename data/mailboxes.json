@@ -56,6 +56,14 @@
       "description": "测试邮箱",
       "is_active": true
     },
+    "tomo@freeagent.live": {
+      "username": "tomo",
+      "email": "tomo@freeagent.live",
+      "password": "tomo123",
+      "created_at": "1752322350",
+      "description": "",
+      "is_active": true
+    },
     "toms@freeagent.live": {
       "username": "toms",
       "email": "toms@freeagent.live",

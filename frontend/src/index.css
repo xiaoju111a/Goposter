@@ -684,10 +684,12 @@ body {
 .create-mailbox-container {
     background: white;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 24px;
-    max-width: 600px;
-    margin: 0 auto;
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    box-shadow: var(--shadow-lg);
 }
 
 .send-email-container h3,
@@ -703,7 +705,171 @@ body {
 .create-mailbox-form {
     display: flex;
     flex-direction: column;
+    gap: 32px;
+    max-width: none;
+}
+
+/* 表单行布局 */
+.send-email-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.send-email-form .form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.send-email-form .form-row.content {
+    grid-template-columns: 1fr;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .send-email-form .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .send-email-container {
+        padding: 24px;
+    }
+    
+    .email-content-textarea {
+        min-height: 200px;
+        padding: 16px;
+    }
+}
+
+/* 邮件内容输入框样式 */
+.email-content-textarea {
+    width: 100%;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 300px;
+    background: var(--bg-secondary);
+    transition: var(--transition);
+}
+
+.email-content-textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.email-content-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* 发送按钮样式增强 */
+.send-btn {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.send-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-blue-dark), #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.send-btn:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 消息提示样式 */
+.message {
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.message.success {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.message.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+/* 发送邮件包装器 */
+.send-email-wrapper {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+}
+
+/* 邮箱列表样式 */
+.mailbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+}
+
+.mailbox-list.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
+}
+
+.mailbox-item {
+    transition: var(--transition);
+}
+
+.mailbox-item:hover {
+    transform: translateY(-2px);
+}
+
+/* 空状态样式 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-text {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.empty-description {
+    font-size: 14px;
+    color: var(--text-muted);
 }
 
 /* 特殊输入组件 */

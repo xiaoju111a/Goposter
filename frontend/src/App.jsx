@@ -23,7 +23,7 @@ const App = () => {
     const [mailboxes, setMailboxes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'templates', 'security'
+    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'security'
     const [isAuthenticated, setIsAuthenticated] = useState(auth.isAuthenticated());
     const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
     const [searchQuery, setSearchQuery] = useState('');
@@ -38,14 +38,19 @@ const App = () => {
     const loadMailboxes = useCallback(async () => {
         try {
             setLoading(true);
+            console.log('开始加载邮箱数据...');
             const mailboxData = await api.getMailboxes();
+            console.log('获取到的邮箱数据:', mailboxData);
             // 过滤掉 undefined 或空值
             const validMailboxes = mailboxData.filter(mailbox => 
                 mailbox && typeof mailbox === 'string' && mailbox.trim() !== ''
             );
+            console.log('过滤后的邮箱数据:', validMailboxes);
             setMailboxes(validMailboxes);
         } catch (err) {
             console.error('加载邮箱失败:', err);
+            // 设置错误状态
+            setMailboxes([]);
         } finally {
             setLoading(false);
         }
@@ -156,8 +161,11 @@ const App = () => {
 
     // 如果未认证，显示登录页面
     if (!isAuthenticated) {
+        console.log('用户未认证，显示登录页面');
         return <Login onLoginSuccess={handleLoginSuccess} />;
     }
+    
+    console.log('用户已认证，显示主界面');
     
     // 调试信息（仅在开发环境）
     if (process.env.NODE_ENV === 'development') {
@@ -212,13 +220,6 @@ const App = () => {
                         <span className="nav-text">统计面板</span>
                     </button>
                     <button 
-                        className={`nav-item ${activeTab === 'templates' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('templates')}
-                    >
-                        <span className="nav-icon">📝</span>
-                        <span className="nav-text">邮件模板</span>
-                    </button>
-                    <button 
                         className={`nav-item ${activeTab === 'security' ? 'active' : ''}`}
                         onClick={() => setActiveTab('security')}
                     >
@@ -249,7 +250,6 @@ const App = () => {
                         {activeTab === 'send' && '📤 发送邮件'}
                         {activeTab === 'create' && '➕ 创建邮箱'}
                         {activeTab === 'stats' && '📊 统计面板'}
-                        {activeTab === 'templates' && '📝 邮件模板'}
                         {activeTab === 'security' && '🔒 安全设置'}
                     </div>
                     <div className="header-actions">
@@ -359,50 +359,34 @@ const App = () => {
                                         </span>
                                     </div>
                                     
-                                    {/* 下拉刷新容器 */}
-                                    <PullToRefresh
-                                        onRefresh={handleRefresh}
-                                        loading={isRefreshing}
-                                        threshold={60}
-                                    >
-                                        {/* 虚拟列表渲染 */}
-                                        <VirtualList
-                                            items={filteredMailboxes}
-                                            itemHeight={viewMode === 'grid' ? 200 : 80}
-                                            containerHeight={600}
-                                            overscan={3}
-                                            className={`mailbox-virtual-list ${viewMode}`}
-                                            renderItem={({ item: mailbox, index }) => {
+                                    {/* 简化的邮箱列表渲染 */}
+                                    <div className={`mailbox-list ${viewMode}`}>
+                                        {console.log('渲染状态:', { 
+                                            filteredMailboxes, 
+                                            length: filteredMailboxes.length,
+                                            loading,
+                                            mailboxes,
+                                            searchQuery 
+                                        })}
+                                        {filteredMailboxes.length === 0 ? (
+                                            <div className="empty-state">
+                                                <div className="empty-icon">📭</div>
+                                                <div className="empty-text">暂无邮箱</div>
+                                                <div className="empty-description">
+                                                    {searchQuery ? '没有找到匹配的邮箱' : '请先创建邮箱'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            filteredMailboxes.map((mailbox, index) => {
+                                                console.log('渲染邮箱:', mailbox, typeof mailbox);
                                                 // 确保邮箱名称有效
                                                 if (!mailbox || typeof mailbox !== 'string') {
+                                                    console.log('跳过无效邮箱:', mailbox);
                                                     return null;
                                                 }
                                                 
                                                 return (
-                                                    <SwipeActions
-                                                        key={`${mailbox}-${refreshKey}`}
-                                                        onSwipeLeft={() => {
-                                                            // 左滑删除
-                                                            if (confirm('确定要删除这个邮箱吗？')) {
-                                                                // TODO: 实现删除API
-                                                                console.log('删除邮箱:', mailbox);
-                                                            }
-                                                        }}
-                                                        onSwipeRight={() => {
-                                                            // 右滑标记
-                                                            const isSelected = selectedMailboxes.includes(mailbox);
-                                                            if (isSelected) {
-                                                                setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
-                                                            } else {
-                                                                setSelectedMailboxes(prev => [...prev, mailbox]);
-                                                            }
-                                                        }}
-                                                        leftAction={{ text: '删除', color: '#ff4757' }}
-                                                        rightAction={{ 
-                                                            text: selectedMailboxes.includes(mailbox) ? '取消选择' : '选择', 
-                                                            color: '#2ed573' 
-                                                        }}
-                                                    >
+                                                    <div key={`${mailbox}-${refreshKey}`} className="mailbox-item">
                                                         <MailboxCard 
                                                             mailbox={mailbox}
                                                             selected={selectedMailboxes.includes(mailbox)}
@@ -415,33 +399,22 @@ const App = () => {
                                                                 }
                                                             }}
                                                         />
-                                                    </SwipeActions>
+                                                    </div>
                                                 );
-                                            }}
-                                            onLoadMore={() => {
-                                                // TODO: 实现分页加载
-                                                console.log('加载更多邮箱...');
-                                            }}
-                                            hasMore={false} // 暂时不支持分页
-                                        />
-                                    </PullToRefresh>
+                                            })
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>
                     )}
 
                     {activeTab === 'send' && (
-                        <div className="send-email-container">
+                        <div className="send-email-wrapper">
                             <SendEmail userEmail={currentUser?.email || (mailboxes.length > 0 ? mailboxes[0] : 'admin@freeagent.live')} />
                         </div>
                     )}
                     
-                    {activeTab === 'templates' && (
-                        <div className="templates-placeholder">
-                            <h3>📝 邮件模板</h3>
-                            <p>邮件模板功能开发中...</p>
-                        </div>
-                    )}
 
                     {activeTab === 'create' && (
                         <CreateMailbox onMailboxCreated={handleMailboxCreated} />

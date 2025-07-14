@@ -59,12 +59,15 @@ export const api = {
         });
         
         if (!response.ok) {
-            throw new Error('获取邮箱列表失败');
+            console.error('API响应失败:', response.status, response.statusText);
+            throw new Error(`获取邮箱列表失败: ${response.status}`);
         }
         
         let data;
         try {
-            data = await response.json();
+            const responseText = await response.text();
+            console.log('API响应原始数据:', responseText);
+            data = JSON.parse(responseText);
         } catch (jsonError) {
             console.error('JSON解析错误:', jsonError);
             throw new Error('服务器返回了无效的JSON数据');
@@ -76,6 +79,7 @@ export const api = {
             return [];
         }
         
+        console.log('解析后的邮箱数据:', data);
         cacheManager.set('mailboxes', data);
         return data;
     },

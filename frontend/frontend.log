@@ -7,3 +7,26 @@
 
   ➜  Local:   http://localhost:8080/
   ➜  Network: http://10.3.12.4:8080/
+9:09:03 PM [vite] hmr update /src/App.jsx
+9:09:49 PM [vite] hmr update /src/components/SendEmail.jsx
+9:10:03 PM [vite] hmr update /src/index.css
+9:10:20 PM [vite] hmr update /src/index.css
+9:13:44 PM [vite] hmr update /src/App.jsx, /src/components/MailboxCard.jsx, /src/components/SendEmail.jsx, /src/components/CreateMailbox.jsx
+9:14:56 PM [vite] hmr update /src/App.jsx
+9:17:46 PM [vite] hmr update /src/App.jsx
+9:18:29 PM [vite] hmr update /src/App.jsx
+9:18:39 PM [vite] hmr update /src/App.jsx
+9:20:52 PM [vite] hmr update /src/components/AuthDebug.jsx
+9:20:53 PM [vite] Pre-transform error: Failed to load url /src/components/AuthDebug.jsx (resolved id: /root/mail/frontend/src/components/AuthDebug.jsx) in /root/mail/frontend/src/App.jsx. Does the file exist?
+9:20:59 PM [vite] hmr update /src/App.jsx
+9:21:05 PM [vite] hmr update /src/App.jsx
+9:21:37 PM [vite] hmr update /src/App.jsx
+9:22:03 PM [vite] hmr update /src/index.css
+9:22:29 PM [vite] hmr update /src/App.jsx
+9:24:47 PM [vite] hmr update /src/index.css
+9:25:24 PM [vite] hmr update /src/App.jsx
+9:25:36 PM [vite] hmr update /src/index.css
+9:25:53 PM [vite] hmr update /src/index.css
+9:26:17 PM [vite] hmr update /src/components/SendEmail.jsx
+9:26:55 PM [vite] hmr update /src/index.css
+9:27:15 PM [vite] hmr update /src/index.css

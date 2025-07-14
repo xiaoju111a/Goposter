@@ -34,3 +34,7 @@ Web界面: http://0.0.0.0:9090
 2025/07/14 20:58:17 SMTP server listening on 0.0.0.0:25 (accepting external connections)
 Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
 5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-23de4323daesm92016985ad.139 - gsmtp
+Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
+5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-74eb9e06aa6sm10871658b3a.62 - gsmtp
+Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
+5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-23de4322cd2sm90502005ad.99 - gsmtp
