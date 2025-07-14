@@ -3,11 +3,21 @@ import { sendEmail } from '../utils/api';
 
 const SendEmail = ({ userEmail = '' }) => {
   const [emailData, setEmailData] = useState({
-    from: userEmail || '',
+    from: userEmail || 'admin@freeagent.live',
     to: '',
     subject: '',
     body: ''
   });
+  
+  // 当userEmail变化时更新from字段
+  React.useEffect(() => {
+    if (userEmail) {
+      setEmailData(prev => ({
+        ...prev,
+        from: userEmail
+      }));
+    }
+  }, [userEmail]);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -94,6 +104,14 @@ const SendEmail = ({ userEmail = '' }) => {
             placeholder="请输入邮件内容..."
             rows="8"
             required
+            style={{
+              width: '100%',
+              padding: '10px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              fontSize: '14px',
+              resize: 'vertical'
+            }}
           />
         </div>
 

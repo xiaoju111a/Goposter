@@ -302,7 +302,6 @@ const SwipeActions = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onMouseDown={handleMouseDown}
-      {...props}
     >
       {/* 左侧操作 */}
       {leftActions.length > 0 && (

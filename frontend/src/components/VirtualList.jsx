@@ -165,16 +165,18 @@ const VirtualList = ({
   // 容器大小监听
   useEffect(() => {
     const handleResize = () => {
-      if (containerRef.current) {
+      if (containerRef.current && typeof containerRef.current.getBoundingClientRect === 'function') {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setContainerSize({ width, height });
       }
     };
     
-    handleResize();
+    // 延迟执行以确保DOM已经挂载
+    const timer = setTimeout(handleResize, 0);
     window.addEventListener('resize', handleResize);
     
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
   }, []);

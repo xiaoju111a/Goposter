@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    port: 8080,
     host: '0.0.0.0',
     allowedHosts: [
       'freeagent.live',
@@ -14,7 +14,8 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:9090',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false
       }
     }
   },

@@ -1,5 +1,5 @@
-2025/07/14 17:58:42 Redis connection failed: dial tcp [::1]:6379: connect: connection refused
-2025/07/14 17:58:42 Failed to create secure database: failed to initialize tables: failed to execute query: CREATE TABLE IF NOT EXISTS encrypted_emails (
+2025/07/14 20:58:17 Redis connection failed: dial tcp [::1]:6379: connect: connection refused
+2025/07/14 20:58:17 Failed to create secure database: failed to initialize tables: failed to execute query: CREATE TABLE IF NOT EXISTS encrypted_emails (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			mailbox TEXT NOT NULL,
 			encrypted_data TEXT NOT NULL,
@@ -9,8 +9,8 @@
 			INDEX(mailbox),
 			INDEX(created_at)
 		), error: near "INDEX": syntax error
-2025/07/14 17:58:42 已加载DKIM密钥
-2025/07/14 17:58:42 SMTP中继配置加载成功: email-smtp.us-east-1.amazonaws.com:587 (启用: true)
+2025/07/14 20:58:17 已加载DKIM密钥
+2025/07/14 20:58:17 SMTP中继配置加载成功: email-smtp.us-east-1.amazonaws.com:587 (启用: true)
 ===============================================
 🎮 YgoCard 全功能邮箱服务器启动完成!
 ===============================================
@@ -18,7 +18,6 @@
 主机名: localhost
 SMTP服务器: 0.0.0.0:25 (接收邮件)
 IMAP服务器: 0.0.0.0:143 (客户端访问)
-2025/07/14 17:58:42 SMTP server listening on 0.0.0.0:25 (accepting external connections)
 Web界面: http://0.0.0.0:9090
 支持功能: SMTP接收/发送、IMAP访问、邮箱管理、自定义用户名
 默认管理员: admin@freeagent.live / 密码: admin123
@@ -30,18 +29,8 @@ Web界面: http://0.0.0.0:9090
 3. TXT记录: freeagent.live -> "v=spf1 a mx ~all"
 防火墙端口: 25(SMTP), 143(IMAP), 9090(Web)
 ===============================================
-2025/07/14 17:58:42 Web server listening on 0.0.0.0:9090 (accepting external connections)
-2025/07/14 17:58:42 IMAP server listening on 0.0.0.0:143
-2025/07/14 18:17:41 New SMTP connection from: 45.227.254.155:65050
-2025/07/14 18:25:02 New SMTP connection from: 180.126.136.97:38270
-2025/07/14 18:25:02 New SMTP connection from: 49.72.81.171:50112
-2025/07/14 18:25:02 New IMAP connection from: 117.95.7.95:36280
-2025/07/14 18:25:02 New SMTP connection from: 117.95.7.95:60670
-2025/07/14 18:29:03 New SMTP connection from: 184.105.247.252:6780
-2025/07/14 18:29:23 New SMTP connection from: 184.105.247.252:62052
-2025/07/14 18:32:46 New SMTP connection from: 121.237.36.29:13758
-2025/07/14 18:37:23 New SMTP connection from: 121.237.36.28:11610
-2025/07/14 18:38:14 New SMTP connection from: 121.237.36.27:24456
-2025/07/14 18:40:34 New SMTP connection from: 121.237.36.28:36286
-2025/07/14 18:40:39 New SMTP connection from: 121.237.36.30:60066
-2025/07/14 18:41:53 New SMTP connection from: 121.237.36.30:62302
+2025/07/14 20:58:17 Web server listening on 0.0.0.0:9090 (accepting external connections)
+2025/07/14 20:58:17 IMAP server listening on 0.0.0.0:143
+2025/07/14 20:58:17 SMTP server listening on 0.0.0.0:25 (accepting external connections)
+Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
+5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-23de4323daesm92016985ad.139 - gsmtp

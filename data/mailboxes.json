@@ -8,6 +8,14 @@
       "description": "系统管理员邮箱",
       "is_active": true
     },
+    "baileypetr3@freeagent.live": {
+      "username": "baileypetr3",
+      "email": "baileypetr3@freeagent.live",
+      "password": "aBuadFSKv4BF",
+      "created_at": "1752322350",
+      "description": "",
+      "is_active": true
+    },
     "dtsd@freeagent.live": {
       "username": "dtsd",
       "email": "dtsd@freeagent.live",

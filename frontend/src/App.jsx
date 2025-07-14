@@ -7,22 +7,43 @@ import Stats from './components/Stats.jsx';
 import SendEmail from './components/SendEmail.jsx';
 import CreateMailbox from './components/CreateMailbox.jsx';
 import Login from './components/Login.jsx';
+// 高级功能组件
+import VirtualList from './components/VirtualList.jsx';
+import FilterBar from './components/FilterBar.jsx';
+import NotificationCenter from './components/NotificationCenter.jsx';
+// import EmailEditor from './components/EmailEditor.jsx';
+// import EmailTemplates from './components/EmailTemplates.jsx';
+import BatchOperations from './components/BatchOperations.jsx';
+import SwipeActions from './components/SwipeActions.jsx';
+import PullToRefresh from './components/PullToRefresh.jsx';
+import AttachmentViewer from './components/AttachmentViewer.jsx';
+import SecuritySettings from './components/SecuritySettings.jsx';
 
 const App = () => {
     const [mailboxes, setMailboxes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats'
+    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'templates', 'security'
     const [isAuthenticated, setIsAuthenticated] = useState(auth.isAuthenticated());
     const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMailboxes, setSelectedMailboxes] = useState([]);
+    // 高级功能状态
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [filterConfig, setFilterConfig] = useState({});
+    const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const loadMailboxes = useCallback(async () => {
         try {
             setLoading(true);
             const mailboxData = await api.getMailboxes();
-            setMailboxes(mailboxData);
+            // 过滤掉 undefined 或空值
+            const validMailboxes = mailboxData.filter(mailbox => 
+                mailbox && typeof mailbox === 'string' && mailbox.trim() !== ''
+            );
+            setMailboxes(validMailboxes);
         } catch (err) {
             console.error('加载邮箱失败:', err);
         } finally {
@@ -55,10 +76,55 @@ const App = () => {
         }
     }, [loadMailboxes, refreshKey, isAuthenticated]);
 
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
         cacheManager.clear();
         setRefreshKey(prev => prev + 1);
+        await loadMailboxes();
+        setIsRefreshing(false);
+        // 添加通知
+        addNotification({
+            id: Date.now(),
+            type: 'success',
+            title: '刷新成功',
+            message: '邮箱数据已更新',
+            timestamp: new Date()
+        });
     };
+
+    // 通知管理
+    const addNotification = useCallback((notification) => {
+        setNotifications(prev => [notification, ...prev.slice(0, 49)]); // 最多50条
+    }, []);
+
+    const removeNotification = useCallback((id) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    }, []);
+
+    const clearAllNotifications = useCallback(() => {
+        setNotifications([]);
+    }, []);
+
+    // 筛选邮箱
+    const filteredMailboxes = useMemo(() => {
+        let filtered = mailboxes;
+        
+        // 基本搜索
+        if (searchQuery.trim()) {
+            filtered = filtered.filter(mailbox => 
+                mailbox.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        
+        // 高级筛选
+        if (filterConfig.domain) {
+            filtered = filtered.filter(mailbox => 
+                mailbox.includes(filterConfig.domain)
+            );
+        }
+        
+        return filtered;
+    }, [mailboxes, searchQuery, filterConfig]);
 
     const handleMailboxCreated = () => {
         // 刷新邮箱列表
@@ -91,6 +157,18 @@ const App = () => {
     // 如果未认证，显示登录页面
     if (!isAuthenticated) {
         return <Login onLoginSuccess={handleLoginSuccess} />;
+    }
+    
+    // 调试信息（仅在开发环境）
+    if (process.env.NODE_ENV === 'development') {
+        console.log('App渲染状态:', {
+            isAuthenticated,
+            currentUser,
+            mailboxes: mailboxes,
+            mailboxesLength: mailboxes.length,
+            loading,
+            activeTab
+        });
     }
 
     return (
@@ -133,6 +211,20 @@ const App = () => {
                         <span className="nav-icon">📊</span>
                         <span className="nav-text">统计面板</span>
                     </button>
+                    <button 
+                        className={`nav-item ${activeTab === 'templates' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('templates')}
+                    >
+                        <span className="nav-icon">📝</span>
+                        <span className="nav-text">邮件模板</span>
+                    </button>
+                    <button 
+                        className={`nav-item ${activeTab === 'security' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('security')}
+                    >
+                        <span className="nav-icon">🔒</span>
+                        <span className="nav-text">安全设置</span>
+                    </button>
                 </nav>
 
                 <div className="sidebar-footer">
@@ -157,47 +249,97 @@ const App = () => {
                         {activeTab === 'send' && '📤 发送邮件'}
                         {activeTab === 'create' && '➕ 创建邮箱'}
                         {activeTab === 'stats' && '📊 统计面板'}
+                        {activeTab === 'templates' && '📝 邮件模板'}
+                        {activeTab === 'security' && '🔒 安全设置'}
                     </div>
-                    <button onClick={handleRefresh} className="refresh-btn" title="刷新数据">
-                        <span className="refresh-icon">🔄</span>
-                        <span className="refresh-text">刷新</span>
-                    </button>
+                    <div className="header-actions">
+                        <button 
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="notification-btn" 
+                            title="通知中心"
+                        >
+                            <span className="notification-icon">🔔</span>
+                            {notifications.length > 0 && (
+                                <span className="notification-badge">{notifications.length}</span>
+                            )}
+                        </button>
+                        <button 
+                            onClick={handleRefresh} 
+                            className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`} 
+                            title="刷新数据"
+                            disabled={isRefreshing}
+                        >
+                            <span className="refresh-icon">🔄</span>
+                            <span className="refresh-text">{isRefreshing ? '刷新中' : '刷新'}</span>
+                        </button>
+                    </div>
                 </div>
+
+                {/* 通知中心 */}
+                {showNotifications && (
+                    <NotificationCenter
+                        notifications={notifications}
+                        onClose={() => setShowNotifications(false)}
+                        onRemove={removeNotification}
+                        onClearAll={clearAllNotifications}
+                    />
+                )}
 
                 <div className="content-body">
                     {activeTab === 'mailboxes' && (
                         <>
                             <Stats mailboxes={mailboxes} totalEmails={totalEmails} />
                             
-                            {/* 搜索和筛选 */}
-                            <div className="toolbar">
-                                <div className="search-container">
-                                    <input
-                                        type="text"
-                                        placeholder="搜索邮箱..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="search-input"
-                                    />
-                                    <span className="search-icon">🔍</span>
-                                </div>
-                                
-                                {selectedMailboxes.length > 0 && (
-                                    <div className="batch-actions">
-                                        <span className="selected-count">已选择 {selectedMailboxes.length} 个邮箱</span>
-                                        <button 
-                                            className="batch-btn danger"
-                                            onClick={() => {
-                                                if (confirm(`确定要删除 ${selectedMailboxes.length} 个邮箱吗？`)) {
-                                                    // TODO: 实现批量删除
-                                                    setSelectedMailboxes([]);
-                                                }
-                                            }}
-                                        >
-                                            批量删除
-                                        </button>
-                                    </div>
-                                )}
+                            {/* 高级筛选栏 */}
+                            <FilterBar
+                                searchQuery={searchQuery}
+                                onSearchChange={setSearchQuery}
+                                filterConfig={filterConfig}
+                                onFilterChange={setFilterConfig}
+                                totalCount={mailboxes.length}
+                                filteredCount={filteredMailboxes.length}
+                            />
+                            
+                            {/* 批量操作 */}
+                            {selectedMailboxes.length > 0 && (
+                                <BatchOperations
+                                    selectedItems={selectedMailboxes}
+                                    onClearSelection={() => setSelectedMailboxes([])}
+                                    onBatchDelete={(items) => {
+                                        // TODO: 实现批量删除API
+                                        console.log('批量删除:', items);
+                                        setSelectedMailboxes([]);
+                                        addNotification({
+                                            id: Date.now(),
+                                            type: 'success',
+                                            title: '批量删除完成',
+                                            message: `已删除 ${items.length} 个邮箱`,
+                                            timestamp: new Date()
+                                        });
+                                    }}
+                                    onBatchMove={(items, target) => {
+                                        // TODO: 实现批量移动API
+                                        console.log('批量移动:', items, 'to', target);
+                                    }}
+                                />
+                            )}
+                            
+                            {/* 视图模式切换 */}
+                            <div className="view-controls">
+                                <button 
+                                    className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('grid')}
+                                    title="网格视图"
+                                >
+                                    <span>⊞</span>
+                                </button>
+                                <button 
+                                    className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('list')}
+                                    title="列表视图"
+                                >
+                                    <span>☰</span>
+                                </button>
                             </div>
                             
                             {loading ? (
@@ -211,37 +353,94 @@ const App = () => {
                                         <h3>邮箱列表</h3>
                                         <span className="mailbox-count">
                                             {searchQuery ? 
-                                                `找到 ${mailboxes.filter(m => m.toLowerCase().includes(searchQuery.toLowerCase())).length} 个邮箱` :
+                                                `找到 ${filteredMailboxes.length} 个邮箱` :
                                                 `${mailboxes.length} 个邮箱`
                                             }
                                         </span>
                                     </div>
-                                    <div className="mailbox-grid">
-                                        {mailboxes
-                                            .filter(mailbox => mailbox.toLowerCase().includes(searchQuery.toLowerCase()))
-                                            .map((mailbox, index) => (
-                                                <MailboxCard 
-                                                    key={`${mailbox}-${refreshKey}`} 
-                                                    mailbox={mailbox}
-                                                    selected={selectedMailboxes.includes(mailbox)}
-                                                    onSelect={(selected) => {
-                                                        if (selected) {
-                                                            setSelectedMailboxes(prev => [...prev, mailbox]);
-                                                        } else {
-                                                            setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
-                                                        }
-                                                    }}
-                                                />
-                                            ))
-                                        }
-                                    </div>
+                                    
+                                    {/* 下拉刷新容器 */}
+                                    <PullToRefresh
+                                        onRefresh={handleRefresh}
+                                        loading={isRefreshing}
+                                        threshold={60}
+                                    >
+                                        {/* 虚拟列表渲染 */}
+                                        <VirtualList
+                                            items={filteredMailboxes}
+                                            itemHeight={viewMode === 'grid' ? 200 : 80}
+                                            containerHeight={600}
+                                            overscan={3}
+                                            className={`mailbox-virtual-list ${viewMode}`}
+                                            renderItem={({ item: mailbox, index }) => {
+                                                // 确保邮箱名称有效
+                                                if (!mailbox || typeof mailbox !== 'string') {
+                                                    return null;
+                                                }
+                                                
+                                                return (
+                                                    <SwipeActions
+                                                        key={`${mailbox}-${refreshKey}`}
+                                                        onSwipeLeft={() => {
+                                                            // 左滑删除
+                                                            if (confirm('确定要删除这个邮箱吗？')) {
+                                                                // TODO: 实现删除API
+                                                                console.log('删除邮箱:', mailbox);
+                                                            }
+                                                        }}
+                                                        onSwipeRight={() => {
+                                                            // 右滑标记
+                                                            const isSelected = selectedMailboxes.includes(mailbox);
+                                                            if (isSelected) {
+                                                                setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
+                                                            } else {
+                                                                setSelectedMailboxes(prev => [...prev, mailbox]);
+                                                            }
+                                                        }}
+                                                        leftAction={{ text: '删除', color: '#ff4757' }}
+                                                        rightAction={{ 
+                                                            text: selectedMailboxes.includes(mailbox) ? '取消选择' : '选择', 
+                                                            color: '#2ed573' 
+                                                        }}
+                                                    >
+                                                        <MailboxCard 
+                                                            mailbox={mailbox}
+                                                            selected={selectedMailboxes.includes(mailbox)}
+                                                            viewMode={viewMode}
+                                                            onSelect={(selected) => {
+                                                                if (selected) {
+                                                                    setSelectedMailboxes(prev => [...prev, mailbox]);
+                                                                } else {
+                                                                    setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </SwipeActions>
+                                                );
+                                            }}
+                                            onLoadMore={() => {
+                                                // TODO: 实现分页加载
+                                                console.log('加载更多邮箱...');
+                                            }}
+                                            hasMore={false} // 暂时不支持分页
+                                        />
+                                    </PullToRefresh>
                                 </div>
                             )}
                         </>
                     )}
 
                     {activeTab === 'send' && (
-                        <SendEmail userEmail={currentUser?.email || (mailboxes.length > 0 ? mailboxes[0] : '')} />
+                        <div className="send-email-container">
+                            <SendEmail userEmail={currentUser?.email || (mailboxes.length > 0 ? mailboxes[0] : 'admin@freeagent.live')} />
+                        </div>
+                    )}
+                    
+                    {activeTab === 'templates' && (
+                        <div className="templates-placeholder">
+                            <h3>📝 邮件模板</h3>
+                            <p>邮件模板功能开发中...</p>
+                        </div>
                     )}
 
                     {activeTab === 'create' && (
@@ -291,6 +490,10 @@ const App = () => {
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {activeTab === 'security' && (
+                        <SecuritySettings />
                     )}
                 </div>
             </div>

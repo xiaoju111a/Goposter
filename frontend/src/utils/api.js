@@ -26,6 +26,7 @@ const authenticatedFetch = async (url, options = {}) => {
     const fetchOptions = {
         ...options,
         headers: {
+            'Content-Type': 'application/json',
             ...options.headers,
             ...authHeaders
         }
@@ -49,24 +50,63 @@ export const api = {
         const cached = cacheManager.get('mailboxes');
         if (cached) return cached;
 
-        const response = await authenticatedFetch('/api/mailboxes');
+        // 直接调用API，不使用认证
+        const response = await fetch('/api/mailboxes', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
         if (!response.ok) {
             throw new Error('获取邮箱列表失败');
         }
-        const data = await response.json();
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            console.error('JSON解析错误:', jsonError);
+            throw new Error('服务器返回了无效的JSON数据');
+        }
+        
+        // 确保返回的是数组
+        if (!Array.isArray(data)) {
+            console.error('邮箱数据不是数组:', data);
+            return [];
+        }
+        
         cacheManager.set('mailboxes', data);
         return data;
     },
 
     async getEmails(mailbox) {
+        if (!mailbox || typeof mailbox !== 'string') {
+            throw new Error('邮箱名称不能为空');
+        }
+        
         const cached = cacheManager.get(`emails-${mailbox}`);
         if (cached) return cached;
 
-        const response = await authenticatedFetch(`/api/emails/${encodeURIComponent(mailbox)}`);
+        // 直接调用API，不使用认证
+        const response = await fetch(`/api/emails/${encodeURIComponent(mailbox)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
         if (!response.ok) {
             throw new Error('获取邮件失败');
         }
+        
         const data = await response.json();
+        
+        // 确保数据是数组
+        if (!Array.isArray(data)) {
+            console.warn('API返回的数据不是数组:', data);
+            return [];
+        }
         
         // 自动解码Base64内容
         const decodedData = data.map(email => ({

@@ -3,13 +3,19 @@ import { api } from '../utils/api.js';
 import { cacheManager } from '../utils/cache.js';
 import EmailItem from './EmailItem.jsx';
 
-const MailboxCard = ({ mailbox, selected = false, onSelect }) => {
+const MailboxCard = ({ mailbox, selected = false, onSelect, viewMode = 'grid' }) => {
     const [emails, setEmails] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [expandedEmailId, setExpandedEmailId] = useState(null);
 
     const loadEmails = useCallback(async () => {
+        if (!mailbox) {
+            setLoading(false);
+            setError('邮箱名称不能为空');
+            return;
+        }
+        
         try {
             setLoading(true);
             setError(null);
@@ -47,7 +53,7 @@ const MailboxCard = ({ mailbox, selected = false, onSelect }) => {
     };
 
     return (
-        <div className={`mailbox-card ${selected ? 'selected' : ''}`}>
+        <div className={`mailbox-card ${selected ? 'selected' : ''} ${viewMode}`}>
             <div className="mailbox-header">
                 {onSelect && (
                     <input
