@@ -1,0 +1,282 @@
+/* VirtualList.css */
+.virtual-list {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.virtual-list-scrollable {
+  position: relative;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f0f0f0;
+}
+
+.virtual-list-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.virtual-list-scrollable::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.virtual-list-scrollable::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.virtual-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+.virtual-list-inner {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-list-item {
+  position: absolute;
+  width: 100%;
+  box-sizing: border-box;
+  transition: opacity 0.2s ease;
+  will-change: transform;
+}
+
+.virtual-list-item:hover {
+  z-index: 2;
+}
+
+.virtual-list-spacer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+.virtual-list-loading {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-top: 1px solid #e0e0e0;
+  z-index: 10;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+  font-size: 14px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e0e0e0;
+  border-top: 2px solid #4CAF50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .virtual-list {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .virtual-list-scrollable::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .loading-spinner {
+    font-size: 12px;
+  }
+  
+  .spinner {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* 性能优化 */
+.virtual-list-item {
+  contain: layout style paint;
+}
+
+.virtual-list-inner {
+  contain: layout style;
+}
+
+/* 滚动状态指示器 */
+.virtual-list.scrolling .virtual-list-item {
+  pointer-events: none;
+}
+
+.virtual-list.scrolling .virtual-list-item img {
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* 空状态 */
+.virtual-list-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+}
+
+.virtual-list-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  opacity: 0.5;
+}
+
+/* 加载状态 */
+.virtual-list-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 选择状态 */
+.virtual-list-item.selected {
+  background: rgba(76, 175, 80, 0.1);
+  border-left: 3px solid #4CAF50;
+}
+
+.virtual-list-item.selected:hover {
+  background: rgba(76, 175, 80, 0.15);
+}
+
+/* 动画效果 */
+.virtual-list-item {
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 高性能模式 */
+.virtual-list.high-performance .virtual-list-item {
+  animation: none;
+  transition: none;
+  opacity: 1;
+}
+
+.virtual-list.high-performance .virtual-list-item:hover {
+  transform: none;
+}
+
+/* 暗色主题 */
+.virtual-list.dark {
+  background: #1a1a1a;
+  border-color: #333;
+  color: #fff;
+}
+
+.virtual-list.dark .virtual-list-scrollable::-webkit-scrollbar-track {
+  background: #333;
+}
+
+.virtual-list.dark .virtual-list-scrollable::-webkit-scrollbar-thumb {
+  background: #666;
+}
+
+.virtual-list.dark .virtual-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+.virtual-list.dark .virtual-list-loading {
+  background: rgba(26, 26, 26, 0.95);
+  border-top-color: #333;
+}
+
+.virtual-list.dark .loading-spinner {
+  color: #ccc;
+}
+
+.virtual-list.dark .spinner {
+  border-color: #333;
+  border-top-color: #4CAF50;
+}
+
+/* 无障碍支持 */
+.virtual-list-item[aria-selected="true"] {
+  outline: 2px solid #4CAF50;
+  outline-offset: -2px;
+}
+
+.virtual-list-item:focus {
+  outline: 2px solid #2196F3;
+  outline-offset: -2px;
+}
+
+/* 移动端优化 */
+@media (hover: none) and (pointer: coarse) {
+  .virtual-list-item:hover {
+    background: transparent;
+  }
+  
+  .virtual-list-item:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* 减少动画以提高性能 */
+@media (prefers-reduced-motion: reduce) {
+  .virtual-list-item {
+    animation: none;
+    transition: none;
+  }
+  
+  .spinner {
+    animation: none;
+  }
+  
+  .virtual-list-skeleton {
+    animation: none;
+  }
+}

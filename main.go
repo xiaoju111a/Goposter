@@ -35,6 +35,7 @@ type MailServer struct {
 	emailAuth      *EmailAuth
 	imapServer     *IMAPServer
 	relayManager   *SMTPRelayManager
+	esClient       *ElasticsearchClient
 }
 
 func NewMailServer(domain, hostname string) *MailServer {
@@ -74,6 +75,9 @@ func NewMailServer(domain, hostname string) *MailServer {
 	// 创建IMAP服务器
 	ms.imapServer = NewIMAPServer(ms)
 	
+	// 初始化ElasticSearch客户端
+	ms.esClient = NewElasticsearchClient()
+	
 	return ms
 }
 
@@ -86,6 +90,9 @@ func (ms *MailServer) AddEmail(to string, email Email) {
 	
 	// 存储邮件
 	ms.storage.AddEmail(to, email)
+	
+	// 索引到ElasticSearch
+	ms.indexEmailToElastic(to, email)
 	
 	// 记录处理日志
 	log.Printf("邮件已接收: %s -> %s", email.From, to)
@@ -226,6 +233,10 @@ func (ms *MailServer) StartWebServer(port string) {
 	http.HandleFunc("/api/relay/providers", ms.apiRelayProviders)
 	http.HandleFunc("/api/relay/test", ms.apiRelayTest)
 	http.HandleFunc("/api/relay/status", ms.apiRelayStatus)
+	
+	// 搜索API
+	http.HandleFunc("/api/search", ms.apiSearch)
+	http.HandleFunc("/api/search/suggest", ms.apiSearchSuggestions)
 	
 	log.Printf("Web server listening on 0.0.0.0:%s (accepting external connections)", port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
@@ -2207,4 +2218,286 @@ func main() {
 	
 	// 启动Web服务器
 	mailServer.StartWebServer(webPort)
+}
+
+// apiSearch 处理邮件搜索请求
+func (ms *MailServer) apiSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		return
+	}
+	
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 解析搜索请求
+	var searchReq SearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&searchReq); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	// 设置默认值
+	if searchReq.Size == 0 {
+		searchReq.Size = 20
+	}
+	if searchReq.Size > 100 {
+		searchReq.Size = 100
+	}
+	
+	// 检查ElasticSearch是否可用
+	if !ms.esClient.IsEnabled() {
+		// 回退到简单搜索
+		result := ms.fallbackSearch(searchReq)
+		jsonData, _ := json.Marshal(result)
+		w.Write(jsonData)
+		return
+	}
+	
+	// 使用ElasticSearch搜索
+	result, err := ms.esClient.SearchEmails(searchReq)
+	if err != nil {
+		log.Printf("搜索失败: %v", err)
+		// 回退到简单搜索
+		result = ms.fallbackSearch(searchReq)
+	}
+	
+	jsonData, _ := json.Marshal(result)
+	w.Write(jsonData)
+}
+
+// apiSearchSuggestions 处理搜索建议请求
+func (ms *MailServer) apiSearchSuggestions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	if r.Method == "OPTIONS" {
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		jsonData, _ := json.Marshal(map[string][]string{"suggestions": {}})
+		w.Write(jsonData)
+		return
+	}
+	
+	// 生成搜索建议
+	suggestions := ms.generateSearchSuggestions(query)
+	
+	response := map[string]interface{}{
+		"suggestions": suggestions,
+		"query":       query,
+	}
+	
+	jsonData, _ := json.Marshal(response)
+	w.Write(jsonData)
+}
+
+// fallbackSearch 简单搜索实现（当ElasticSearch不可用时）
+func (ms *MailServer) fallbackSearch(searchReq SearchRequest) *SearchResult {
+	result := &SearchResult{
+		Emails: []EmailDocument{},
+		Total:  0,
+		Took:   0,
+	}
+	
+	// 获取所有邮箱
+	mailboxes := ms.GetAllMailboxes()
+	
+	// 如果指定了邮箱，只搜索该邮箱
+	if searchReq.Mailbox != "" {
+		mailboxes = []string{searchReq.Mailbox}
+	}
+	
+	startTime := time.Now()
+	var allEmails []EmailDocument
+	
+	for _, mailbox := range mailboxes {
+		emails := ms.GetEmails(mailbox)
+		for _, email := range emails {
+			// 简单的文本匹配
+			if ms.matchesSearch(email, searchReq) {
+				doc := EmailDocument{
+					ID:        email.ID,
+					Mailbox:   mailbox,
+					From:      email.From,
+					To:        email.To,
+					Subject:   email.Subject,
+					Body:      email.Body,
+					Timestamp: parseEmailDate(email.Date),
+				}
+				allEmails = append(allEmails, doc)
+			}
+		}
+	}
+	
+	// 分页
+	start := searchReq.From_
+	end := start + searchReq.Size
+	if start > len(allEmails) {
+		start = len(allEmails)
+	}
+	if end > len(allEmails) {
+		end = len(allEmails)
+	}
+	
+	result.Total = int64(len(allEmails))
+	result.Emails = allEmails[start:end]
+	result.Took = int(time.Since(startTime).Milliseconds())
+	
+	return result
+}
+
+// matchesSearch 检查邮件是否匹配搜索条件
+func (ms *MailServer) matchesSearch(email Email, searchReq SearchRequest) bool {
+	// 主搜索查询
+	if searchReq.Query != "" {
+		query := strings.ToLower(searchReq.Query)
+		content := strings.ToLower(email.Subject + " " + email.Body + " " + email.From + " " + email.To)
+		if !strings.Contains(content, query) {
+			return false
+		}
+	}
+	
+	// 发件人筛选
+	if searchReq.From != "" {
+		if !strings.Contains(strings.ToLower(email.From), strings.ToLower(searchReq.From)) {
+			return false
+		}
+	}
+	
+	// 收件人筛选
+	if searchReq.To != "" {
+		if !strings.Contains(strings.ToLower(email.To), strings.ToLower(searchReq.To)) {
+			return false
+		}
+	}
+	
+	// 主题筛选
+	if searchReq.Subject != "" {
+		if !strings.Contains(strings.ToLower(email.Subject), strings.ToLower(searchReq.Subject)) {
+			return false
+		}
+	}
+	
+	// 日期筛选
+	if searchReq.DateStart != "" || searchReq.DateEnd != "" {
+		emailDate := parseEmailDate(email.Date)
+		
+		if searchReq.DateStart != "" {
+			startDate, _ := time.Parse("2006-01-02", searchReq.DateStart)
+			if emailDate.Before(startDate) {
+				return false
+			}
+		}
+		
+		if searchReq.DateEnd != "" {
+			endDate, _ := time.Parse("2006-01-02", searchReq.DateEnd)
+			if emailDate.After(endDate.AddDate(0, 0, 1)) {
+				return false
+			}
+		}
+	}
+	
+	return true
+}
+
+// generateSearchSuggestions 生成搜索建议
+func (ms *MailServer) generateSearchSuggestions(query string) []string {
+	suggestions := []string{}
+	query = strings.ToLower(query)
+	
+	// 常用搜索建议
+	commonSuggestions := []string{
+		"from:",
+		"to:",
+		"subject:",
+		"has:attachment",
+		"is:unread",
+		"is:read",
+		"priority:high",
+		"size:>1MB",
+		"date:today",
+		"date:yesterday",
+		"date:week",
+		"date:month",
+	}
+	
+	// 匹配常用建议
+	for _, suggestion := range commonSuggestions {
+		if strings.HasPrefix(suggestion, query) {
+			suggestions = append(suggestions, suggestion)
+		}
+	}
+	
+	// 限制建议数量
+	if len(suggestions) > 10 {
+		suggestions = suggestions[:10]
+	}
+	
+	return suggestions
+}
+
+// parseEmailDate 解析邮件日期
+func parseEmailDate(dateStr string) time.Time {
+	// 尝试多种日期格式
+	formats := []string{
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC822Z,
+		time.RFC822,
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02",
+	}
+	
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return t
+		}
+	}
+	
+	return time.Now()
+}
+
+// indexEmailToElastic 将邮件索引到ElasticSearch
+func (ms *MailServer) indexEmailToElastic(mailbox string, email Email) {
+	if !ms.esClient.IsEnabled() {
+		return
+	}
+	
+	doc := EmailDocument{
+		ID:        email.ID,
+		Mailbox:   mailbox,
+		From:      email.From,
+		To:        email.To,
+		Subject:   email.Subject,
+		Body:      email.Body,
+		Timestamp: parseEmailDate(email.Date),
+		// 这些字段需要从邮件内容中提取
+		HasAttachment: strings.Contains(email.Body, "Content-Disposition: attachment"),
+		IsRead:        false, // 新邮件默认未读
+		Priority:      "normal",
+		Size:          int64(len(email.Body)),
+		Tags:          []string{},
+		Headers:       map[string]string{},
+	}
+	
+	if err := ms.esClient.IndexEmail(doc); err != nil {
+		log.Printf("索引邮件到ElasticSearch失败: %v", err)
+	}
 }
