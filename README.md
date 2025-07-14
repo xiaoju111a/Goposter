@@ -58,8 +58,8 @@
 git clone [项目地址]
 cd mail
 
-# 启动后端服务器
-go run *.go freeagent.live localhost 25 143 9090
+# 启动后端服务器 (新的模块化结构)
+go run backend/*/*.go freeagent.live localhost 25 143 9090
 
 # 启动前端开发服务器
 cd frontend
@@ -75,10 +75,10 @@ npm run dev -- --port 8080 --host 0.0.0.0
 
 ```bash
 # 使用真实域名和标准端口 (需要sudo权限)
-sudo go run *.go freeagent.live mail.freeagent.live 25 143 443
+sudo go run backend/*/*.go freeagent.live mail.freeagent.live 25 143 443
 
 # 后台运行服务器
-nohup go run *.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
+nohup go run backend/*/*.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
 
 # 参数说明: 域名 主机名 SMTP端口 IMAP端口 Web端口
 ```
@@ -361,7 +361,7 @@ freeagent-mail/
 ### 开发模式
 ```bash
 # 后端开发模式 (端口2525)
-go run *.go freeagent.live localhost 2525 1143 8080
+go run backend/*/*.go freeagent.live localhost 2525 1143 8080
 
 # 前端开发模式
 cd frontend && npm run dev
@@ -370,10 +370,10 @@ cd frontend && npm run dev
 ### 生产模式
 ```bash
 # 生产环境 (标准端口)
-sudo go run *.go freeagent.live mail.freeagent.live 25 143 443
+sudo go run backend/*/*.go freeagent.live mail.freeagent.live 25 143 443
 
 # 后台运行
-nohup go run *.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
+nohup go run backend/*/*.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
 ```
 
 ## 🔒 安全特性
