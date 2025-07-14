@@ -14,7 +14,9 @@ import (
 )
 
 type Database struct {
-	db *sql.DB
+	db               *sql.DB
+	secureDB         *SecureDatabase
+	encryptionManager *EncryptionManager
 }
 
 type UserDB struct {
@@ -52,7 +54,22 @@ func NewDatabase(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
 
-	database := &Database{db: db}
+	// 创建加密管理器
+	encryptionManager := NewEncryptionManager("freeagent-mail-encryption-key-2024")
+	
+	// 创建安全数据库
+	secureDB, err := NewSecureDatabase(dbPath, "freeagent-secure-key-2024", "localhost:6379")
+	if err != nil {
+		log.Printf("Failed to create secure database: %v", err)
+		// 继续使用基础数据库
+	}
+
+	database := &Database{
+		db:               db,
+		secureDB:         secureDB,
+		encryptionManager: encryptionManager,
+	}
+	
 	if err := database.createTables(); err != nil {
 		return nil, fmt.Errorf("failed to create tables: %v", err)
 	}
@@ -376,5 +393,251 @@ func (d *Database) ensureDefaultAdmin() error {
 }
 
 func (d *Database) Close() error {
+	if d.secureDB != nil {
+		d.secureDB.Close()
+	}
 	return d.db.Close()
+}
+
+// StoreEncryptedEmail 存储加密邮件
+func (d *Database) StoreEncryptedEmail(mailbox string, emailData map[string]interface{}) error {
+	if d.secureDB == nil || d.encryptionManager == nil {
+		return fmt.Errorf("secure database not initialized")
+	}
+	
+	// 提取邮件内容
+	subject := getStringFromMap(emailData, "subject")
+	body := getStringFromMap(emailData, "body")
+	headers := getStringFromMap(emailData, "headers")
+	
+	// 加密邮件内容
+	encryptedEmail, err := d.encryptionManager.EncryptEmail(subject, body, headers)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt email: %v", err)
+	}
+	
+	// 创建完整的加密邮件数据
+	encryptedData := make(map[string]interface{})
+	for k, v := range emailData {
+		encryptedData[k] = v
+	}
+	
+	// 替换敏感字段为加密版本
+	encryptedData["encrypted_subject"] = encryptedEmail.EncryptedSubject
+	encryptedData["encrypted_body"] = encryptedEmail.EncryptedBody
+	encryptedData["encrypted_headers"] = encryptedEmail.EncryptedHeaders
+	encryptedData["subject_salt"] = encryptedEmail.SubjectSalt
+	encryptedData["body_salt"] = encryptedEmail.BodySalt
+	encryptedData["headers_salt"] = encryptedEmail.HeadersSalt
+	encryptedData["subject_nonce"] = encryptedEmail.SubjectNonce
+	encryptedData["body_nonce"] = encryptedEmail.BodyNonce
+	encryptedData["headers_nonce"] = encryptedEmail.HeadersNonce
+	encryptedData["algorithm"] = encryptedEmail.Algorithm
+	encryptedData["key_version"] = encryptedEmail.KeyVersion
+	encryptedData["encrypted_at"] = encryptedEmail.CreatedAt
+	
+	// 创建搜索索引
+	searchIndex, err := d.encryptionManager.EncryptSearchIndex(subject + " " + body)
+	if err != nil {
+		log.Printf("Failed to create search index: %v", err)
+	} else {
+		encryptedData["search_index"] = searchIndex
+	}
+	
+	// 删除明文数据
+	delete(encryptedData, "subject")
+	delete(encryptedData, "body")
+	delete(encryptedData, "headers")
+	
+	// 存储到安全数据库
+	return d.secureDB.StoreEncryptedEmail(mailbox, encryptedData)
+}
+
+// GetDecryptedEmails 获取解密邮件
+func (d *Database) GetDecryptedEmails(mailbox string) ([]map[string]interface{}, error) {
+	if d.secureDB == nil || d.encryptionManager == nil {
+		return nil, fmt.Errorf("secure database not initialized")
+	}
+	
+	// 获取加密邮件
+	encryptedEmails, err := d.secureDB.GetEncryptedEmails(mailbox)
+	if err != nil {
+		return nil, err
+	}
+	
+	var decryptedEmails []map[string]interface{}
+	
+	for _, encEmail := range encryptedEmails {
+		// 构造加密邮件结构
+		emailEnc := &EmailEncryption{
+			EncryptedSubject: getStringFromMap(encEmail, "encrypted_subject"),
+			EncryptedBody:    getStringFromMap(encEmail, "encrypted_body"),
+			EncryptedHeaders: getStringFromMap(encEmail, "encrypted_headers"),
+			SubjectSalt:      getStringFromMap(encEmail, "subject_salt"),
+			BodySalt:         getStringFromMap(encEmail, "body_salt"),
+			HeadersSalt:      getStringFromMap(encEmail, "headers_salt"),
+			SubjectNonce:     getStringFromMap(encEmail, "subject_nonce"),
+			BodyNonce:        getStringFromMap(encEmail, "body_nonce"),
+			HeadersNonce:     getStringFromMap(encEmail, "headers_nonce"),
+			Algorithm:        getStringFromMap(encEmail, "algorithm"),
+			KeyVersion:       getIntFromMap(encEmail, "key_version"),
+			CreatedAt:        getInt64FromMap(encEmail, "encrypted_at"),
+		}
+		
+		// 验证加密数据完整性
+		if err := d.encryptionManager.ValidateEncryptedData(emailEnc); err != nil {
+			log.Printf("Invalid encrypted data: %v", err)
+			continue
+		}
+		
+		// 解密邮件
+		subject, body, headers, err := d.encryptionManager.DecryptEmail(emailEnc)
+		if err != nil {
+			log.Printf("Failed to decrypt email: %v", err)
+			continue
+		}
+		
+		// 创建解密后的邮件数据
+		decryptedEmail := make(map[string]interface{})
+		for k, v := range encEmail {
+			// 跳过加密相关字段
+			if strings.HasPrefix(k, "encrypted_") || strings.HasSuffix(k, "_salt") || 
+			   strings.HasSuffix(k, "_nonce") || k == "algorithm" || k == "key_version" {
+				continue
+			}
+			decryptedEmail[k] = v
+		}
+		
+		// 添加解密后的内容
+		decryptedEmail["subject"] = subject
+		decryptedEmail["body"] = body
+		decryptedEmail["headers"] = headers
+		
+		decryptedEmails = append(decryptedEmails, decryptedEmail)
+	}
+	
+	return decryptedEmails, nil
+}
+
+// SearchEncryptedEmails 搜索加密邮件
+func (d *Database) SearchEncryptedEmails(mailbox, searchTerm string) ([]map[string]interface{}, error) {
+	if d.secureDB == nil || d.encryptionManager == nil {
+		return nil, fmt.Errorf("secure database not initialized")
+	}
+	
+	// 获取所有加密邮件
+	encryptedEmails, err := d.secureDB.GetEncryptedEmails(mailbox)
+	if err != nil {
+		return nil, err
+	}
+	
+	var matchedEmails []map[string]interface{}
+	
+	for _, encEmail := range encryptedEmails {
+		// 检查搜索索引
+		searchIndex := getStringFromMap(encEmail, "search_index")
+		if searchIndex != "" {
+			if d.encryptionManager.SearchEncryptedContent(searchTerm, searchIndex) {
+				matchedEmails = append(matchedEmails, encEmail)
+			}
+		}
+	}
+	
+	// 解密匹配的邮件
+	return d.decryptEmailList(matchedEmails)
+}
+
+// decryptEmailList 解密邮件列表
+func (d *Database) decryptEmailList(encryptedEmails []map[string]interface{}) ([]map[string]interface{}, error) {
+	var decryptedEmails []map[string]interface{}
+	
+	for _, encEmail := range encryptedEmails {
+		emailEnc := &EmailEncryption{
+			EncryptedSubject: getStringFromMap(encEmail, "encrypted_subject"),
+			EncryptedBody:    getStringFromMap(encEmail, "encrypted_body"),
+			EncryptedHeaders: getStringFromMap(encEmail, "encrypted_headers"),
+			SubjectSalt:      getStringFromMap(encEmail, "subject_salt"),
+			BodySalt:         getStringFromMap(encEmail, "body_salt"),
+			HeadersSalt:      getStringFromMap(encEmail, "headers_salt"),
+			SubjectNonce:     getStringFromMap(encEmail, "subject_nonce"),
+			BodyNonce:        getStringFromMap(encEmail, "body_nonce"),
+			HeadersNonce:     getStringFromMap(encEmail, "headers_nonce"),
+			Algorithm:        getStringFromMap(encEmail, "algorithm"),
+			KeyVersion:       getIntFromMap(encEmail, "key_version"),
+			CreatedAt:        getInt64FromMap(encEmail, "encrypted_at"),
+		}
+		
+		subject, body, headers, err := d.encryptionManager.DecryptEmail(emailEnc)
+		if err != nil {
+			continue
+		}
+		
+		decryptedEmail := make(map[string]interface{})
+		for k, v := range encEmail {
+			if !strings.HasPrefix(k, "encrypted_") && !strings.HasSuffix(k, "_salt") && 
+			   !strings.HasSuffix(k, "_nonce") && k != "algorithm" && k != "key_version" {
+				decryptedEmail[k] = v
+			}
+		}
+		
+		decryptedEmail["subject"] = subject
+		decryptedEmail["body"] = body
+		decryptedEmail["headers"] = headers
+		
+		decryptedEmails = append(decryptedEmails, decryptedEmail)
+	}
+	
+	return decryptedEmails, nil
+}
+
+// GetSecurityStats 获取安全统计信息
+func (d *Database) GetSecurityStats() map[string]interface{} {
+	if d.secureDB == nil {
+		return map[string]interface{}{
+			"encryption_enabled": false,
+			"secure_database":    false,
+		}
+	}
+	
+	stats := d.secureDB.GetSecurityStats()
+	if d.encryptionManager != nil {
+		encInfo := d.encryptionManager.GetEncryptionInfo()
+		stats["encryption_info"] = encInfo
+	}
+	
+	return stats
+}
+
+// 辅助函数
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
+func getIntFromMap(m map[string]interface{}, key string) int {
+	if val, ok := m[key]; ok {
+		if i, ok := val.(int); ok {
+			return i
+		}
+		if f, ok := val.(float64); ok {
+			return int(f)
+		}
+	}
+	return 0
+}
+
+func getInt64FromMap(m map[string]interface{}, key string) int64 {
+	if val, ok := m[key]; ok {
+		if i, ok := val.(int64); ok {
+			return i
+		}
+		if f, ok := val.(float64); ok {
+			return int64(f)
+		}
+	}
+	return 0
 }
