@@ -100,19 +100,22 @@
     sudo systemctl enable redis
     ```
 
-2.  **编译并启动邮件服务器**
+2.  **编译应用程序**
+    ```bash
+    # 此命令会在当前目录生成一个名为 mailserver 的可执行文件
+    go build -o mailserver .
+    ```
+
+3.  **启动邮件服务器**
     > 生产环境需要 `sudo` 权限以监听低位端口 (25, 143, 443)。
 
     ```bash
-    # 编译
-    go build -o mailserver .
-
     # 启动 (前台运行)
     # 格式: ./mailserver [域名] [公网主机] [SMTP] [IMAP] [HTTPS]
     sudo ./mailserver freeagent.live mail.freeagent.live 25 143 443
     ```
 
-3.  **后台持久化运行 (推荐)**
+4.  **后台持久化运行 (推荐)**
     ```bash
     nohup sudo ./mailserver freeagent.live localhost 25 143 9090 > server.log 2>&1 &
     ```
