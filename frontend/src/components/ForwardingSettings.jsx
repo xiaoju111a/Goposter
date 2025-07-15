@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 
-const ForwardingSettings = ({ mailbox }) => {
+const ForwardingSettings = () => {
     const [settings, setSettings] = useState({
         forward_enabled: false,
         forward_to: '',
         keep_original: true
     });
     const [loading, setLoading] = useState(false);
+    const [currentUser, setCurrentUser] = useState('');
 
     useEffect(() => {
-        if (mailbox) {
-            fetchSettings();
-        }
-    }, [mailbox]);
+        fetchSettings();
+    }, []);
 
     const fetchSettings = async () => {
         try {
-            const response = await fetch(`/api/forwarding/settings?mailbox=${mailbox}`, {
+            const response = await fetch('/api/forwarding/settings', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
             if (response.ok) {
                 const data = await response.json();
                 setSettings(data);
+                setCurrentUser(data.mailbox || '');
             }
         } catch (error) {
             console.error('获取转发设置失败:', error);
@@ -37,10 +37,9 @@ const ForwardingSettings = ({ mailbox }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 },
                 body: JSON.stringify({
-                    mailbox: mailbox,
                     forward_to: settings.forward_to,
                     forward_enabled: settings.forward_enabled,
                     keep_original: settings.keep_original
@@ -72,7 +71,7 @@ const ForwardingSettings = ({ mailbox }) => {
     return (
         <div className="forwarding-settings">
             <h3>邮件转发设置</h3>
-            <p>当前邮箱: <strong>{mailbox}</strong></p>
+            <p>当前邮箱: <strong>{currentUser}</strong></p>
             
             <div className="setting-item">
                 <label>

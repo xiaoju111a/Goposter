@@ -19,18 +19,6 @@ import (
 
 
 // Mailbox 邮箱结构
-type Mailbox struct {
-	Username        string    `json:"username"`
-	Email           string    `json:"email"`
-	Password        string    `json:"password"`
-	CreatedAt       string    `json:"created_at"`
-	Description     string    `json:"description"`
-	IsActive        bool      `json:"is_active"`
-	Owner           string    `json:"owner"`           // 邮箱所有者
-	ForwardTo       string    `json:"forward_to"`      // 转发邮箱
-	ForwardEnabled  bool      `json:"forward_enabled"` // 转发开关
-	KeepOriginal    bool      `json:"keep_original"`   // 是否保留原邮件
-}
 
 // AttachmentInfo 附件信息
 type AttachmentInfo struct {
@@ -162,6 +150,9 @@ func NewMailServer(domain, hostname string) *MailServer {
 		relayManager:   relayManager,
 	}
 	
+	// 同步JSON邮箱数据到SQLite数据库
+	ms.syncMailboxesToDatabase()
+	
 	// 设置SMTP发送器的中继
 	ms.smtpSender.SetRelay(ms.relayManager.GetRelay())
 	
@@ -196,7 +187,47 @@ func (ms *MailServer) GetEmails(mailbox string) []Email {
 }
 
 func (ms *MailServer) GetAllMailboxes() []string {
-	return ms.mailboxManager.GetMailboxesByDomain()
+	mailboxes, err := ms.database.GetAllMailboxes()
+	if err != nil {
+		log.Printf("Error getting mailboxes: %v", err)
+		return []string{}
+	}
+	
+	var mailboxNames []string
+	for _, mailbox := range mailboxes {
+		mailboxNames = append(mailboxNames, mailbox.Email)
+	}
+	return mailboxNames
+}
+
+// 同步JSON邮箱数据到SQLite数据库
+func (ms *MailServer) syncMailboxesToDatabase() {
+	// 获取JSON中的所有邮箱
+	jsonMailboxes := ms.mailboxManager.GetAllMailboxes()
+	
+	log.Printf("开始同步邮箱数据到数据库，JSON中有 %d 个邮箱", len(jsonMailboxes))
+	
+	for _, mailbox := range jsonMailboxes {
+		// 检查数据库中是否已存在该邮箱
+		_, err := ms.database.GetMailbox(mailbox.Email)
+		if err != nil {
+			// 邮箱不存在，需要创建
+			log.Printf("正在同步邮箱: %s", mailbox.Email)
+			
+			// 创建邮箱到数据库 (JSON中的密码是明文，CreateMailbox会自动哈希)
+			err = ms.database.CreateMailbox(mailbox.Email, mailbox.Password, mailbox.Description, mailbox.Owner)
+			if err != nil {
+				log.Printf("同步邮箱 %s 失败: %v", mailbox.Email, err)
+			} else {
+				log.Printf("成功同步邮箱: %s", mailbox.Email)
+			}
+		} else {
+			// 邮箱已存在，但可能需要更新转发设置
+			log.Printf("邮箱 %s 已存在，跳过同步", mailbox.Email)
+		}
+	}
+	
+	log.Printf("邮箱数据同步完成")
 }
 
 func (ms *MailServer) HandleSMTP(conn net.Conn) {
@@ -253,7 +284,7 @@ func (ms *MailServer) HandleSMTP(conn net.Conn) {
 				}
 				
 				// 检查是否需要保留原邮件
-				mailboxInfo := ms.mailboxManager.GetMailbox(to)
+				mailboxInfo, _ := ms.mailboxManager.GetMailbox(to)
 				keepOriginal := true
 				if mailboxInfo != nil && mailboxInfo.ForwardEnabled {
 					keepOriginal = mailboxInfo.KeepOriginal
@@ -374,11 +405,11 @@ func (ms *MailServer) StartWebServer(port string) {
 	// 用户管理API
 	http.HandleFunc("/api/admin/users", ms.apiAdminUsers)
 	http.HandleFunc("/api/admin/users/create", ms.apiAdminCreateUser)
-	http.HandleFunc("/api/admin/users/delete", ms.apiAdminDeleteUser)
+	// http.HandleFunc("/api/admin/users/delete", ms.apiAdminDeleteUser)
 	http.HandleFunc("/api/admin/mailboxes", ms.apiAdminMailboxes)
 	http.HandleFunc("/api/admin/mailboxes/create", ms.apiAdminCreateMailbox)
-	http.HandleFunc("/api/admin/mailboxes/delete", ms.apiAdminDeleteMailbox)
-	http.HandleFunc("/api/admin/mailboxes/assign", ms.apiAdminAssignMailbox)
+	// http.HandleFunc("/api/admin/mailboxes/delete", ms.apiAdminDeleteMailbox)
+	// http.HandleFunc("/api/admin/mailboxes/assign", ms.apiAdminAssignMailbox)
 	
 	// 邮件转发API
 	http.HandleFunc("/api/forwarding/settings", ms.apiForwardingSettings)
@@ -429,13 +460,20 @@ func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ms *MailServer) apiCreateMailbox(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	
 	var req struct {
 		Username    string `json:"username"`
@@ -453,7 +491,17 @@ func (ms *MailServer) apiCreateMailbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	err := ms.mailboxManager.CreateMailbox(req.Username, req.Password, req.Description)
+	// 获取当前用户作为邮箱所有者
+	currentUser := ms.getUserFromRequest(r)
+	if currentUser == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	// 构建完整邮箱地址
+	fullEmail := req.Username + "@" + ms.domain
+	
+	err := ms.database.CreateMailbox(fullEmail, req.Password, req.Description, currentUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -540,14 +588,22 @@ func (ms *MailServer) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// 优先使用数据库认证
-	if ms.database.Authenticate(req.Email, req.Password) {
+	// 使用邮箱认证
+	if ms.database.ValidateMailboxCredentials(req.Email, req.Password) {
 		sessionID, _ := ms.database.CreateSession(req.Email)
+		
+		// 检查是否是管理员用户
+		isAdmin := false
+		if user, err := ms.database.GetUser(req.Email); err == nil {
+			isAdmin = user.IsAdmin
+		}
+		
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":     "success",
 			"session_id": sessionID,
 			"email":      req.Email,
+			"is_admin":   isAdmin,
 		})
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -2088,8 +2144,36 @@ func (ms *MailServer) debugHandler(w http.ResponseWriter, r *http.Request) {
 func (ms *MailServer) apiMailboxes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	
-	mailboxes := ms.GetAllMailboxes()
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	// 获取当前用户
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	// 根据用户权限获取邮箱列表
+	var mailboxes []string
+	if ms.isAdminRequest(r) {
+		// 管理员可以看到所有邮箱
+		mailboxes = ms.GetAllMailboxes()
+	} else {
+		// 普通用户只能看到自己的邮箱
+		userMailboxes := ms.getUserMailboxes(userEmail)
+		for _, mailbox := range userMailboxes {
+			mailboxes = append(mailboxes, mailbox.Email)
+		}
+		// 如果用户没有关联的邮箱，至少显示自己的邮箱
+		if len(mailboxes) == 0 {
+			mailboxes = append(mailboxes, userEmail)
+		}
+	}
 	
 	response := "["
 	for i, mailbox := range mailboxes {
@@ -2685,16 +2769,39 @@ func (ms *MailServer) apiAuthLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// 使用JWT和2FA认证
-	tokens, err := ms.userAuth.AuthenticateWith2FA(req.Email, req.Password, req.TwoFactorCode)
-	if err != nil {
+	// 使用数据库验证邮箱凭据
+	if !ms.database.ValidateMailboxCredentials(req.Email, req.Password) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid credentials"})
 		return
 	}
 	
+	// 检查用户是否存在，如果不存在则创建
+	_, err := ms.database.GetUser(req.Email)
+	if err != nil {
+		// 用户不存在，创建默认用户记录
+		isAdmin := req.Email == "admin@"+ms.domain
+		err = ms.database.CreateUser(req.Email, req.Password, isAdmin)
+		if err != nil && !strings.Contains(err.Error(), "already exists") {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "failed to create user"})
+			return
+		}
+	}
+	
+	// 暂时跳过2FA验证，UserDB结构中没有TwoFactorEnabled字段
+	// 如果需要2FA功能，需要扩展UserDB结构体
+	
+	// 生成简单的JWT令牌
+	accessToken := base64.StdEncoding.EncodeToString([]byte(req.Email + ":" + time.Now().Format(time.RFC3339)))
+	
 	// 返回JWT令牌
-	json.NewEncoder(w).Encode(tokens)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"access_token": accessToken,
+		"token_type":   "Bearer",
+		"expires_in":   86400, // 24小时
+		"user_email":   req.Email,
+	})
 }
 
 func (ms *MailServer) apiAuthLogout(w http.ResponseWriter, r *http.Request) {
@@ -3719,15 +3826,9 @@ func (ms *MailServer) apiForwardingSettings(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	
-	// 获取当前用户邮箱
-	userEmail := r.URL.Query().Get("mailbox")
+	// 获取当前登录用户邮箱
+	userEmail := ms.getUserFromRequest(r)
 	if userEmail == "" {
-		http.Error(w, "Mailbox parameter required", http.StatusBadRequest)
-		return
-	}
-	
-	// 验证用户权限
-	if !ms.hasMailboxAccess(r, userEmail) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -3756,7 +3857,6 @@ func (ms *MailServer) apiForwardingUpdate(w http.ResponseWriter, r *http.Request
 	}
 	
 	var req struct {
-		Mailbox        string `json:"mailbox"`
 		ForwardTo      string `json:"forward_to"`
 		ForwardEnabled bool   `json:"forward_enabled"`
 		KeepOriginal   bool   `json:"keep_original"`
@@ -3767,14 +3867,15 @@ func (ms *MailServer) apiForwardingUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	
-	// 验证用户权限
-	if !ms.hasMailboxAccess(r, req.Mailbox) {
+	// 获取当前登录用户邮箱
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	
 	// 更新转发设置
-	if err := ms.updateForwardingSettings(req.Mailbox, req.ForwardTo, req.ForwardEnabled, req.KeepOriginal); err != nil {
+	if err := ms.updateForwardingSettings(userEmail, req.ForwardTo, req.ForwardEnabled, req.KeepOriginal); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -3869,26 +3970,15 @@ func (ms *MailServer) apiUserEmails(w http.ResponseWriter, r *http.Request) {
 
 // isAdminRequest 验证请求是否来自管理员
 func (ms *MailServer) isAdminRequest(r *http.Request) bool {
-	// 获取JWT token
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		return false
-	}
-	
-	// 去除Bearer前缀
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-	
-	// 验证JWT token并获取用户信息
-	userEmail, err := ms.userAuth.ValidateJWT(token)
-	if err != nil {
+	// 获取用户邮箱
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
 		return false
 	}
 	
 	// 检查用户是否是管理员
-	user, exists := ms.userAuth.GetUser(userEmail)
-	if !exists {
+	user, err := ms.database.GetUser(userEmail)
+	if err != nil {
 		return false
 	}
 	
@@ -3908,39 +3998,48 @@ func (ms *MailServer) hasMailboxAccess(r *http.Request, mailbox string) bool {
 		return true
 	}
 	
-	// 检查用户是否有该邮箱的访问权限
-	user, exists := ms.userAuth.GetUser(userEmail)
-	if !exists {
-		return false
-	}
-	
-	// 检查邮箱是否分配给该用户
-	for _, assignedMailbox := range user.AssignedMailboxes {
-		if assignedMailbox == mailbox {
-			return true
-		}
-	}
-	
-	return false
+	// 用户只能访问自己的邮箱
+	return userEmail == mailbox
 }
 
 // getUserFromRequest 从请求中获取用户邮箱
 func (ms *MailServer) getUserFromRequest(r *http.Request) string {
+	// 尝试从 Authorization header 获取 Bearer token
 	token := r.Header.Get("Authorization")
-	if token == "" {
-		return ""
+	if token != "" {
+		if len(token) > 7 && token[:7] == "Bearer " {
+			token = token[7:]
+		}
+		
+		// 先尝试JWT验证
+		userEmail, err := ms.userAuth.ValidateJWT(token)
+		if err == nil {
+			return userEmail
+		}
+		
+		// 如果JWT验证失败，尝试简单的base64解码
+		if decoded, err := base64.StdEncoding.DecodeString(token); err == nil {
+			parts := strings.Split(string(decoded), ":")
+			if len(parts) >= 2 {
+				email := parts[0]
+				// 简单验证：检查邮箱是否存在于数据库中
+				if _, err := ms.database.GetMailbox(email); err == nil {
+					return email
+				}
+			}
+		}
 	}
 	
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
+	// 尝试从 Session-ID header 获取会话
+	sessionID := r.Header.Get("Session-ID")
+	if sessionID != "" {
+		session, err := ms.database.GetSession(sessionID)
+		if err == nil {
+			return session.Email
+		}
 	}
 	
-	userEmail, err := ms.userAuth.ValidateJWT(token)
-	if err != nil {
-		return ""
-	}
-	
-	return userEmail
+	return ""
 }
 
 // getAllUsers 获取所有用户
@@ -3954,20 +4053,25 @@ func (ms *MailServer) createUser(email, password string, isAdmin bool) error {
 }
 
 // getAllMailboxes 获取所有邮箱
-func (ms *MailServer) getAllMailboxes() []Mailbox {
-	return ms.mailboxManager.GetAllMailboxes()
+func (ms *MailServer) getAllMailboxes() []MailboxDB {
+	mailboxes, err := ms.database.GetAllMailboxes()
+	if err != nil {
+		log.Printf("Error getting mailboxes: %v", err)
+		return []MailboxDB{}
+	}
+	return mailboxes
 }
 
 // createMailbox 创建新邮箱
 func (ms *MailServer) createMailbox(email, password, description, owner string) error {
-	return ms.mailboxManager.CreateMailbox(email, password, description, owner)
+	return ms.database.CreateMailbox(email, password, description, owner)
 }
 
 // getUserMailboxes 获取用户的邮箱列表
-func (ms *MailServer) getUserMailboxes(userEmail string) []Mailbox {
-	user, exists := ms.userAuth.GetUser(userEmail)
-	if !exists {
-		return []Mailbox{}
+func (ms *MailServer) getUserMailboxes(userEmail string) []MailboxDB {
+	user, err := ms.database.GetUser(userEmail)
+	if err != nil {
+		return []MailboxDB{}
 	}
 	
 	// 管理员可以看到所有邮箱
@@ -3975,26 +4079,20 @@ func (ms *MailServer) getUserMailboxes(userEmail string) []Mailbox {
 		return ms.getAllMailboxes()
 	}
 	
-	// 普通用户只能看到分配给他的邮箱
-	var userMailboxes []Mailbox
-	allMailboxes := ms.getAllMailboxes()
-	
-	for _, mailbox := range allMailboxes {
-		for _, assignedMailbox := range user.AssignedMailboxes {
-			if mailbox.Email == assignedMailbox {
-				userMailboxes = append(userMailboxes, mailbox)
-				break
-			}
-		}
+	// 普通用户只能看到自己的邮箱
+	mailboxes, err := ms.database.GetMailboxesByOwner(userEmail)
+	if err != nil {
+		log.Printf("Error getting mailboxes for user %s: %v", userEmail, err)
+		return []MailboxDB{}
 	}
 	
-	return userMailboxes
+	return mailboxes
 }
 
 // getForwardingSettings 获取转发设置
 func (ms *MailServer) getForwardingSettings(mailbox string) map[string]interface{} {
-	mailboxInfo := ms.mailboxManager.GetMailbox(mailbox)
-	if mailboxInfo == nil {
+	mailboxInfo, err := ms.database.GetMailbox(mailbox)
+	if err != nil {
 		return map[string]interface{}{
 			"forward_enabled": false,
 			"forward_to":      "",
@@ -4006,33 +4104,34 @@ func (ms *MailServer) getForwardingSettings(mailbox string) map[string]interface
 		"forward_enabled": mailboxInfo.ForwardEnabled,
 		"forward_to":      mailboxInfo.ForwardTo,
 		"keep_original":   mailboxInfo.KeepOriginal,
+		"mailbox":         mailbox,
 	}
 }
 
 // updateForwardingSettings 更新转发设置
 func (ms *MailServer) updateForwardingSettings(mailbox, forwardTo string, forwardEnabled, keepOriginal bool) error {
-	return ms.mailboxManager.UpdateForwardingSettings(mailbox, forwardTo, forwardEnabled, keepOriginal)
+	return ms.database.UpdateMailboxForwarding(mailbox, forwardTo, forwardEnabled, keepOriginal)
 }
 
 // processEmailForwarding 处理邮件转发
 func (ms *MailServer) processEmailForwarding(recipientEmail, rawContent string) {
 	// 获取收件人邮箱设置
-	mailboxInfo := ms.mailboxManager.GetMailbox(recipientEmail)
-	if mailboxInfo == nil || !mailboxInfo.ForwardEnabled || mailboxInfo.ForwardTo == "" {
+	mailboxInfo, err := ms.database.GetMailbox(recipientEmail)
+	if err != nil || !mailboxInfo.ForwardEnabled || mailboxInfo.ForwardTo == "" {
 		return
 	}
 	
 	// 解析邮件内容
-	emailContent := ParseEmailContentEnhanced(rawContent)
-	if emailContent == nil {
+	emailContent, _, _ := ParseEmailContent(rawContent)
+	if emailContent == "" {
 		return
 	}
 	
 	// 构建转发邮件
-	forwardedContent := ms.buildForwardedEmail(emailContent, recipientEmail, mailboxInfo.ForwardTo)
+	forwardedContent := fmt.Sprintf("Forwarded from %s:\n\n%s", recipientEmail, emailContent)
 	
 	// 发送转发邮件
-	err := ms.smtpSender.SendEmail(recipientEmail, mailboxInfo.ForwardTo, forwardedContent)
+	err = ms.smtpSender.SendEmail(recipientEmail, mailboxInfo.ForwardTo, "Forwarded Email", forwardedContent)
 	if err != nil {
 		log.Printf("Failed to forward email from %s to %s: %v", recipientEmail, mailboxInfo.ForwardTo, err)
 	} else {

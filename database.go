@@ -48,6 +48,20 @@ type EmailDB struct {
 	Received  time.Time `json:"received"`
 }
 
+type MailboxDB struct {
+	ID             int       `json:"id"`
+	Email          string    `json:"email"`
+	PasswordHash   string    `json:"password_hash"`
+	Salt           string    `json:"salt"`
+	Description    string    `json:"description"`
+	IsActive       bool      `json:"is_active"`
+	Owner          string    `json:"owner"`
+	ForwardTo      string    `json:"forward_to"`
+	ForwardEnabled bool      `json:"forward_enabled"`
+	KeepOriginal   bool      `json:"keep_original"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 func NewDatabase(dbPath string) (*Database, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -118,15 +132,33 @@ func (d *Database) createTables() error {
 		received DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
+	// 邮箱表
+	mailboxTable := `
+	CREATE TABLE IF NOT EXISTS mailboxes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		salt TEXT NOT NULL,
+		description TEXT,
+		is_active BOOLEAN DEFAULT TRUE,
+		owner TEXT,
+		forward_to TEXT,
+		forward_enabled BOOLEAN DEFAULT FALSE,
+		keep_original BOOLEAN DEFAULT TRUE,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
 	// 创建索引
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_emails_mailbox ON emails(mailbox);",
 		"CREATE INDEX IF NOT EXISTS idx_emails_received ON emails(received);",
 		"CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id);",
 		"CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);",
+		"CREATE INDEX IF NOT EXISTS idx_mailboxes_email ON mailboxes(email);",
+		"CREATE INDEX IF NOT EXISTS idx_mailboxes_owner ON mailboxes(owner);",
 	}
 
-	tables := []string{userTable, sessionTable, emailTable}
+	tables := []string{userTable, sessionTable, emailTable, mailboxTable}
 	for _, table := range tables {
 		if _, err := d.db.Exec(table); err != nil {
 			return err
@@ -293,7 +325,7 @@ func (d *Database) GetEmails(mailbox string) ([]EmailDB, error) {
 	return emails, nil
 }
 
-func (d *Database) GetAllMailboxes() ([]string, error) {
+func (d *Database) GetAllMailboxNames() ([]string, error) {
 	query := `
 		SELECT DISTINCT mailbox 
 		FROM emails 
@@ -640,4 +672,174 @@ func getInt64FromMap(m map[string]interface{}, key string) int64 {
 		}
 	}
 	return 0
+}
+
+// 邮箱管理方法
+func (d *Database) CreateMailbox(email, password, description, owner string) error {
+	email = strings.ToLower(email)
+	
+	// 检查邮箱是否已存在
+	var count int
+	err := d.db.QueryRow("SELECT COUNT(*) FROM mailboxes WHERE email = ?", email).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("mailbox already exists: %s", email)
+	}
+
+	// 生成盐值和密码哈希
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return err
+	}
+	saltString := hex.EncodeToString(salt)
+	
+	passwordHash := sha256.Sum256([]byte(password + saltString))
+	passwordHashString := hex.EncodeToString(passwordHash[:])
+
+	// 插入邮箱
+	_, err = d.db.Exec(`
+		INSERT INTO mailboxes (email, password_hash, salt, description, is_active, owner, forward_to, forward_enabled, keep_original)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, email, passwordHashString, saltString, description, true, owner, "", false, true)
+	
+	return err
+}
+
+func (d *Database) GetMailbox(email string) (*MailboxDB, error) {
+	email = strings.ToLower(email)
+	
+	var mailbox MailboxDB
+	err := d.db.QueryRow(`
+		SELECT id, email, password_hash, salt, description, is_active, owner, forward_to, forward_enabled, keep_original, created_at
+		FROM mailboxes WHERE email = ?
+	`, email).Scan(&mailbox.ID, &mailbox.Email, &mailbox.PasswordHash, &mailbox.Salt, &mailbox.Description, 
+		&mailbox.IsActive, &mailbox.Owner, &mailbox.ForwardTo, &mailbox.ForwardEnabled, &mailbox.KeepOriginal, &mailbox.CreatedAt)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &mailbox, nil
+}
+
+func (d *Database) GetMailboxesByOwner(owner string) ([]MailboxDB, error) {
+	rows, err := d.db.Query(`
+		SELECT id, email, password_hash, salt, description, is_active, owner, forward_to, forward_enabled, keep_original, created_at
+		FROM mailboxes WHERE owner = ?
+	`, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var mailboxes []MailboxDB
+	for rows.Next() {
+		var mailbox MailboxDB
+		err := rows.Scan(&mailbox.ID, &mailbox.Email, &mailbox.PasswordHash, &mailbox.Salt, &mailbox.Description, 
+			&mailbox.IsActive, &mailbox.Owner, &mailbox.ForwardTo, &mailbox.ForwardEnabled, &mailbox.KeepOriginal, &mailbox.CreatedAt)
+		if err != nil {
+			continue
+		}
+		mailboxes = append(mailboxes, mailbox)
+	}
+	
+	return mailboxes, nil
+}
+
+func (d *Database) GetAllMailboxes() ([]MailboxDB, error) {
+	rows, err := d.db.Query(`
+		SELECT id, email, password_hash, salt, description, is_active, owner, forward_to, forward_enabled, keep_original, created_at
+		FROM mailboxes
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var mailboxes []MailboxDB
+	for rows.Next() {
+		var mailbox MailboxDB
+		err := rows.Scan(&mailbox.ID, &mailbox.Email, &mailbox.PasswordHash, &mailbox.Salt, &mailbox.Description, 
+			&mailbox.IsActive, &mailbox.Owner, &mailbox.ForwardTo, &mailbox.ForwardEnabled, &mailbox.KeepOriginal, &mailbox.CreatedAt)
+		if err != nil {
+			continue
+		}
+		mailboxes = append(mailboxes, mailbox)
+	}
+	
+	return mailboxes, nil
+}
+
+func (d *Database) ValidateMailboxCredentials(email, password string) bool {
+	email = strings.ToLower(email)
+	
+	var passwordHash, salt string
+	err := d.db.QueryRow("SELECT password_hash, salt FROM mailboxes WHERE email = ? AND is_active = true", email).Scan(&passwordHash, &salt)
+	if err != nil {
+		return false
+	}
+	
+	// 验证密码
+	expectedHash := sha256.Sum256([]byte(password + salt))
+	expectedHashString := hex.EncodeToString(expectedHash[:])
+	
+	return passwordHash == expectedHashString
+}
+
+func (d *Database) UpdateMailboxForwarding(email, forwardTo string, forwardEnabled, keepOriginal bool) error {
+	email = strings.ToLower(email)
+	
+	_, err := d.db.Exec(`
+		UPDATE mailboxes SET forward_to = ?, forward_enabled = ?, keep_original = ?
+		WHERE email = ?
+	`, forwardTo, forwardEnabled, keepOriginal, email)
+	
+	return err
+}
+
+func (d *Database) DeleteMailbox(email string) error {
+	email = strings.ToLower(email)
+	
+	_, err := d.db.Exec("DELETE FROM mailboxes WHERE email = ?", email)
+	return err
+}
+
+// GetUser 获取用户信息
+func (d *Database) GetUser(email string) (*UserDB, error) {
+	email = strings.ToLower(email)
+	
+	var user UserDB
+	var lastLogin *time.Time
+	err := d.db.QueryRow(`
+		SELECT id, email, password_hash, salt, is_admin, created_at, last_login
+		FROM users WHERE email = ?
+	`, email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Salt, &user.IsAdmin, &user.CreatedAt, &lastLogin)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	// 处理可能为null的last_login字段
+	if lastLogin != nil {
+		user.LastLogin = *lastLogin
+	}
+	
+	return &user, nil
+}
+
+// GetSession 获取会话信息
+func (d *Database) GetSession(sessionID string) (*SessionDB, error) {
+	var session SessionDB
+	err := d.db.QueryRow(`
+		SELECT id, session_id, email, created_at, expires_at
+		FROM sessions WHERE session_id = ? AND expires_at > datetime('now')
+	`, sessionID).Scan(&session.ID, &session.SessionID, &session.Email, &session.CreatedAt, &session.ExpiresAt)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &session, nil
 }

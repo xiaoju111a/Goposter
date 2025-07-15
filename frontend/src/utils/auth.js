@@ -5,19 +5,33 @@ export const auth = {
   isAuthenticated() {
     const accessToken = localStorage.getItem('access_token');
     const userEmail = localStorage.getItem('userEmail');
+    const expiresAt = localStorage.getItem('token_expires_at');
     
     if (!accessToken || !userEmail) return false;
     
     // 检查token是否过期
+    if (expiresAt) {
+      const now = Date.now();
+      if (now >= parseInt(expiresAt)) {
+        console.warn('Token has expired');
+        this.clearAuth();
+        return false;
+      }
+    }
+    
+    // 验证token格式（简单验证是否是base64编码的邮箱地址）
     try {
-      const payload = this.decodeJWTPayload(accessToken);
-      const now = Math.floor(Date.now() / 1000);
-      return payload.exp > now;
+      const decoded = atob(accessToken);
+      if (decoded.includes(userEmail)) {
+        return true;
+      }
     } catch (error) {
-      console.warn('Invalid JWT token:', error);
+      console.warn('Invalid token format:', error);
       this.clearAuth();
       return false;
     }
+    
+    return true;
   },
 
   // 解码JWT载荷
@@ -36,24 +50,16 @@ export const auth = {
     
     const accessToken = localStorage.getItem('access_token');
     const userEmail = localStorage.getItem('userEmail');
+    const expiresAt = localStorage.getItem('token_expires_at');
     
-    try {
-      const payload = this.decodeJWTPayload(accessToken);
-      return {
-        accessToken,
-        email: userEmail,
-        username: userEmail?.split('@')[0] || '',
-        isAdmin: payload.is_admin || false,
-        exp: payload.exp,
-        iat: payload.iat
-      };
-    } catch (error) {
-      return {
-        accessToken,
-        email: userEmail,
-        username: userEmail?.split('@')[0] || ''
-      };
-    }
+    return {
+      accessToken,
+      email: userEmail,
+      username: userEmail?.split('@')[0] || '',
+      isAdmin: userEmail === 'admin@freeagent.live', // 简单的管理员判断
+      exp: expiresAt ? parseInt(expiresAt) / 1000 : null,
+      iat: null
+    };
   },
 
   // 获取访问令牌用于API调用

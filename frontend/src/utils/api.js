@@ -50,12 +50,9 @@ export const api = {
         const cached = cacheManager.get('mailboxes');
         if (cached) return cached;
 
-        // 直接调用API，不使用认证
-        const response = await fetch('/api/mailboxes', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        // 使用认证的API调用
+        const response = await authenticatedFetch('/api/mailboxes', {
+            method: 'GET'
         });
         
         if (!response.ok) {
