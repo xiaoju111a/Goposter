@@ -107,12 +107,12 @@
     ```
 
 3.  **启动邮件服务器**
-    > 生产环境需要 `sudo` 权限以监听低位端口 (25, 143, 443)。
+    > 生产环境需要 `sudo` 权限以监听低位端口 (25, 143)。
 
     ```bash
     # 启动 (前台运行)
-    # 格式: ./mailserver [域名] [公网主机] [SMTP] [IMAP] [HTTPS]
-    sudo ./mailserver freeagent.live mail.freeagent.live 25 143 443
+    # 格式: ./mailserver [域名] [公网主机] [SMTP] [IMAP] [Web/API端口]
+    sudo ./mailserver freeagent.live mail.freeagent.live 25 143 9090
     ```
 
 4.  **后台持久化运行 (推荐)**
