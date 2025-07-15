@@ -69,10 +69,10 @@
     ```
 
 2.  **启动后端服务器**
-    > 后端服务入口位于根目录的 `main.go`，它会加载 `backend/` 目录下的所有模块。
+    > 所有 Go 源码位于根目录，并作为单个程序运行。
 
     ```bash
-    # 此命令会从当前目录运行主程序
+    # 此命令会从当前目录编译并运行主程序
     # 格式: go run . [域名] [主机] [SMTP端口] [IMAP端口] [Web端口]
     go run . freeagent.live localhost 25 143 9090
     ```
@@ -120,28 +120,25 @@
 
 ## 📁 项目结构
 
+项目采用扁平化的结构，所有 Go 源代码文件均位于根目录，并作为单个 `main` 包进行编译。
+
 ```
 /
-├── backend/          #  Go 后端模块
-│   ├── core/         # 核心服务 (主程序, 数据库)
-│   ├── email/        # 邮件协议处理 (SMTP, IMAP)
-│   ├── management/   # 业务管理 (邮箱, 别名)
-│   ├── performance/  # 性能优化 (队列, 连接池)
-│   └── security/     # 安全相关 (认证, 加密)
+├── go.mod            # Go 模块依赖
+├── main.go           # 主程序入口和 Web 服务器
+├── auth.go           # 认证逻辑
+├── database.go       # 数据库操作
+├── smtp_sender.go    # SMTP 邮件发送
+├── email_parser.go   # 邮件解析
+├── ...               # 其他核心 Go 源文件
 ├── frontend/         # React 前端应用
 │   ├── src/
-│   │   ├── components/ # UI 组件
-│   │   └── utils/      # 工具函数 (API, Auth)
-│   └── vite.config.js # Vite 配置文件
+│   │   ├── components/
+│   │   └── utils/
+│   └── dist/         # 前端构建产物
 ├── data/             # 运行时数据 (数据库, 邮件)
-├── config/           # 静态配置文件
 ├── docs/             # 项目详细文档
-│   ���── api/          # API 文档
-│   ├── guides/       # 配置指南 (DNS, 防火墙)
-│   └── features/     # 功能说明
-├── test/             # 性能和压力测试脚本
-├── go.mod            # Go 模块依赖
-└── main.go           # (旧) 主入口, 现已模块化至 backend/
+└── test/             # 测试脚本
 ```
 
 ## 🌐 DNS 配置
