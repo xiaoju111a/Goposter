@@ -2534,3 +2534,340 @@ body {
         max-width: 150px;
     }
 }
+
+/* 增强邮件解析功能样式 */
+.email-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+    padding: 0 16px;
+}
+
+.email-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.email-tag.auto-reply {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fbbf24;
+}
+
+.email-tag.attachments {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #60a5fa;
+}
+
+.email-tag.charset {
+    background-color: #f3e8ff;
+    color: #7c3aed;
+    border: 1px solid #a78bfa;
+}
+
+/* 内容类型切换 */
+.content-type-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.toggle-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+    background: var(--bg-hover);
+}
+
+.toggle-btn.active {
+    background: var(--primary-blue);
+    color: var(--text-white);
+    border-color: var(--primary-blue);
+}
+
+/* HTML内容样式 */
+.email-html-content {
+    margin-bottom: 16px;
+}
+
+.html-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.email-text-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* 附件样式 */
+.email-attachments {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.email-attachments h4 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.attachments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.attachment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.attachment-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.attachment-size,
+.attachment-type {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.attachment-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.inline-badge {
+    padding: 2px 6px;
+    background: var(--info);
+    color: var(--text-white);
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.preview-btn, .download-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+}
+
+.preview-btn:hover, .download-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-blue);
+    transform: translateY(-1px);
+}
+
+.preview-btn:active, .download-btn:active {
+    transform: translateY(0);
+}
+
+/* 嵌入式内容样式 */
+.email-embedded {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.embedded-links,
+.embedded-images {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.embedded-links h4,
+.embedded-images h4 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.link-item {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.link-item a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.link-item a:hover {
+    text-decoration: underline;
+}
+
+.more-links {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+}
+
+.images-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.image-item {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.embedded-image {
+    max-width: 150px;
+    max-height: 100px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    object-fit: cover;
+}
+
+.image-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 100px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 8px;
+}
+
+/* 签名样式 */
+.email-signature {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-blue);
+}
+
+.email-signature h4 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.signature-content {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .email-tags {
+        padding: 0 12px;
+    }
+    
+    .content-type-toggle {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .toggle-btn {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .attachment-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .attachment-actions {
+        align-self: flex-end;
+    }
+    
+    .images-list {
+        justify-content: center;
+    }
+    
+    .embedded-image {
+        max-width: 120px;
+        max-height: 80px;
+    }
+    
+    .image-placeholder {
+        width: 120px;
+        height: 80px;
+    }
+}

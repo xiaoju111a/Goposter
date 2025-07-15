@@ -103,10 +103,182 @@ const EmailItem = ({ email, expanded, onToggle, onDelete }) => {
                     </div>
                 </div>
                 <div className="email-subject-expanded">{email.Subject || '(无主题)'}</div>
+                
+                {/* 邮件标签 */}
+                <div className="email-tags">
+                    {email.IsAutoReply && (
+                        <span className="email-tag auto-reply">自动回复</span>
+                    )}
+                    {email.Attachments && email.Attachments.length > 0 && (
+                        <span className="email-tag attachments">
+                            📎 {email.Attachments.length}个附件
+                        </span>
+                    )}
+                    {email.Charset && email.Charset !== 'utf-8' && (
+                        <span className="email-tag charset">{email.Charset}</span>
+                    )}
+                </div>
+                
                 <div className="email-body-expanded">
+                    {/* 邮件正文 */}
                     <div className="email-content">
-                        {email.Body || '(无内容)'}
+                        {email.HTMLBody ? (
+                            <div className="email-html-content">
+                                <div className="content-type-toggle">
+                                    <button 
+                                        className="toggle-btn active"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const htmlContent = e.target.closest('.email-body-expanded').querySelector('.email-html-content');
+                                            const textContent = e.target.closest('.email-body-expanded').querySelector('.email-text-content');
+                                            htmlContent.style.display = 'block';
+                                            textContent.style.display = 'none';
+                                            e.target.classList.add('active');
+                                            e.target.nextElementSibling.classList.remove('active');
+                                        }}
+                                    >
+                                        HTML
+                                    </button>
+                                    <button 
+                                        className="toggle-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const htmlContent = e.target.closest('.email-body-expanded').querySelector('.email-html-content');
+                                            const textContent = e.target.closest('.email-body-expanded').querySelector('.email-text-content');
+                                            htmlContent.style.display = 'none';
+                                            textContent.style.display = 'block';
+                                            e.target.classList.add('active');
+                                            e.target.previousElementSibling.classList.remove('active');
+                                        }}
+                                    >
+                                        纯文本
+                                    </button>
+                                </div>
+                                <div className="html-content" dangerouslySetInnerHTML={{
+                                    __html: email.HTMLBody ? email.HTMLBody.replace(/cid:([^"'\s>]+)/g, (match, cid) => {
+                                        const mailbox = window.location.pathname.split('/').pop();
+                                        return `/api/attachments/inline/${mailbox}/${email.ID}/${cid}`;
+                                    }) : ''
+                                }} />
+                            </div>
+                        ) : null}
+                        <div className="email-text-content" style={{display: email.HTMLBody ? 'none' : 'block'}}>
+                            {email.Body || '(无内容)'}
+                        </div>
                     </div>
+                    
+                    {/* 附件列表 */}
+                    {email.Attachments && email.Attachments.length > 0 && (
+                        <div className="email-attachments">
+                            <h4>📎 附件 ({email.Attachments.length})</h4>
+                            <div className="attachments-list">
+                                {email.Attachments.map((attachment, index) => (
+                                    <div key={index} className="attachment-item">
+                                        <div className="attachment-info">
+                                            <span className="attachment-name">{attachment.Filename || '未知文件'}</span>
+                                            <span className="attachment-size">
+                                                {(attachment.Size / 1024).toFixed(1)} KB
+                                            </span>
+                                            <span className="attachment-type">{attachment.ContentType}</span>
+                                        </div>
+                                        <div className="attachment-actions">
+                                            {attachment.Disposition === 'inline' && (
+                                                <span className="inline-badge">内联</span>
+                                            )}
+                                            {attachment.ContentType && attachment.ContentType.startsWith('image/') && (
+                                                <button 
+                                                    className="preview-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const imageUrl = attachment.CID 
+                                                            ? `/api/attachments/inline/${window.location.pathname.split('/').pop()}/${email.ID}/${attachment.CID}`
+                                                            : `/api/attachments/${window.location.pathname.split('/').pop()}/${email.ID}/${index}`;
+                                                        window.open(imageUrl, '_blank');
+                                                    }}
+                                                    title="预览图片"
+                                                >
+                                                    🖼️
+                                                </button>
+                                            )}
+                                            <button 
+                                                className="download-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const downloadUrl = `/api/attachments/${window.location.pathname.split('/').pop()}/${email.ID}/${index}`;
+                                                    const link = document.createElement('a');
+                                                    link.href = downloadUrl;
+                                                    link.download = attachment.Filename || 'attachment';
+                                                    link.click();
+                                                }}
+                                                title="下载附件"
+                                            >
+                                                📥
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* 嵌入式内容 */}
+                    {email.Embedded && (
+                        <div className="email-embedded">
+                            {email.Embedded.links && email.Embedded.links.length > 0 && (
+                                <div className="embedded-links">
+                                    <h4>🔗 链接</h4>
+                                    <div className="links-list">
+                                        {email.Embedded.links.slice(0, 5).map((link, index) => (
+                                            <div key={index} className="link-item">
+                                                <a href={link} target="_blank" rel="noopener noreferrer">
+                                                    {link.length > 50 ? link.substring(0, 50) + '...' : link}
+                                                </a>
+                                            </div>
+                                        ))}
+                                        {email.Embedded.links.length > 5 && (
+                                            <div className="more-links">
+                                                还有 {email.Embedded.links.length - 5} 个链接...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {email.Embedded.images && email.Embedded.images.length > 0 && (
+                                <div className="embedded-images">
+                                    <h4>🖼️ 图片</h4>
+                                    <div className="images-list">
+                                        {email.Embedded.images.slice(0, 3).map((image, index) => (
+                                            <div key={index} className="image-item">
+                                                <img 
+                                                    src={image} 
+                                                    alt={`图片 ${index + 1}`}
+                                                    className="embedded-image"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextElementSibling.style.display = 'block';
+                                                    }}
+                                                />
+                                                <div className="image-placeholder" style={{display: 'none'}}>
+                                                    无法加载图片: {image}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* 签名 */}
+                    {email.Signature && (
+                        <div className="email-signature">
+                            <h4>✍️ 签名</h4>
+                            <div className="signature-content">
+                                {email.Signature}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );

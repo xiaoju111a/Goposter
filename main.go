@@ -9,19 +9,55 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/mail"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
 
+// AttachmentInfo 附件信息
+type AttachmentInfo struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
+	Content     []byte `json:"content,omitempty"`
+	CID         string `json:"cid,omitempty"`
+	Disposition string `json:"disposition"`
+}
+
+// EmailContent 邮件内容结构
+type EmailContent struct {
+	Subject     string
+	Body        string
+	HTMLBody    string
+	Date        string
+	From        string
+	To          []string
+	CC          []string
+	BCC         []string
+	Attachments []AttachmentInfo
+	Signature   string
+	IsAutoReply bool
+	Charset     string
+	Headers     map[string]string
+}
+
 type Email struct {
-	From    string
-	To      string
-	Subject string
-	Body    string
-	Date    string
-	ID      string // 添加邮件ID字段
+	From        string                 `json:"from"`
+	To          string                 `json:"to"`
+	Subject     string                 `json:"subject"`
+	Body        string                 `json:"body"`
+	HTMLBody    string                 `json:"html_body,omitempty"`
+	Date        string                 `json:"date"`
+	ID          string                 `json:"id"`
+	Attachments []AttachmentInfo       `json:"attachments,omitempty"`
+	Signature   string                 `json:"signature,omitempty"`
+	IsAutoReply bool                   `json:"is_auto_reply"`
+	Charset     string                 `json:"charset,omitempty"`
+	Headers     map[string]string      `json:"headers,omitempty"`
+	Embedded    map[string][]string    `json:"embedded,omitempty"`
 }
 
 // 临时添加缺失的类型定义
@@ -176,15 +212,29 @@ func (ms *MailServer) HandleSMTP(conn net.Conn) {
 				
 				// 解析邮件内容
 				rawContent := strings.Join(emailData, "\n")
-				subject, body, date := ParseEmailContent(rawContent)
+				
+				// 调试：保存原始邮件到文件
+				if err := os.WriteFile(fmt.Sprintf("./data/raw_email_%d.eml", time.Now().Unix()), []byte(rawContent), 0644); err != nil {
+					log.Printf("Warning: Failed to save raw email: %v", err)
+				}
+				
+				// 使用增强邮件解析器
+				emailContent := parseEmailContentEnhanced(rawContent)
 				
 				email := Email{
-					From:    from,
-					To:      to,
-					Subject: subject,
-					Body:    body,
-					Date:    date,
-					ID:      generateEmailID(to),
+					From:        from,
+					To:          to,
+					Subject:     emailContent.Subject,
+					Body:        emailContent.Body,
+					HTMLBody:    emailContent.HTMLBody,
+					Date:        emailContent.Date,
+					ID:          generateEmailID(to),
+					Attachments: emailContent.Attachments,
+					Signature:   emailContent.Signature,
+					IsAutoReply: emailContent.IsAutoReply,
+					Charset:     emailContent.Charset,
+					Headers:     emailContent.Headers,
+					Embedded:    extractEmbeddedContent(emailContent),
 				}
 				
 				ms.AddEmail(to, email)
@@ -288,6 +338,10 @@ func (ms *MailServer) StartWebServer(port string) {
 	// 搜索API
 	http.HandleFunc("/api/search", ms.apiSearch)
 	http.HandleFunc("/api/search/suggest", ms.apiSearchSuggestions)
+	
+	// 附件处理API
+	http.HandleFunc("/api/attachments/", ms.apiAttachments)
+	http.HandleFunc("/api/attachments/inline/", ms.apiInlineAttachments)
 	
 	log.Printf("Web server listening on 0.0.0.0:%s (accepting external connections)", port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
@@ -2019,12 +2073,19 @@ func (ms *MailServer) apiEmails(w http.ResponseWriter, r *http.Request) {
 		decodedSubject := decodeEmailBodyIfNeeded(email.Subject)
 		
 		apiEmail := map[string]interface{}{
-			"From":    email.From,
-			"To":      email.To,
-			"Subject": decodedSubject,
-			"Body":    decodedBody,
-			"Date":    email.Date,
-			"ID":      email.ID,
+			"From":        email.From,
+			"To":          email.To,
+			"Subject":     decodedSubject,
+			"Body":        decodedBody,
+			"HTMLBody":    email.HTMLBody,
+			"Date":        email.Date,
+			"ID":          email.ID,
+			"Attachments": email.Attachments,
+			"Signature":   email.Signature,
+			"IsAutoReply": email.IsAutoReply,
+			"Charset":     email.Charset,
+			"Headers":     email.Headers,
+			"Embedded":    email.Embedded,
 		}
 		
 		apiEmails = append(apiEmails, apiEmail)
@@ -2784,4 +2845,636 @@ func (ms *MailServer) apiAuth2FAStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	json.NewEncoder(w).Encode(response)
+}
+
+// parseEmailContentEnhanced 增强版邮件解析器
+func parseEmailContentEnhanced(rawContent string) *EmailContent {
+	// 使用Go标准库解析邮件
+	msg, err := mail.ReadMessage(strings.NewReader(rawContent))
+	if err != nil {
+		// 如果标准库解析失败，使用备用解析器
+		return parseEmailFallbackEnhanced(rawContent)
+	}
+	
+	emailContent := &EmailContent{
+		Headers: make(map[string]string),
+	}
+	
+	// 解析邮件头部
+	parseEmailHeaders(msg.Header, emailContent)
+	
+	// 解析邮件正文和附件
+	parseEmailBodyEnhanced(msg, emailContent)
+	
+	// 检测签名和自动回复
+	detectSignatureAndAutoReply(emailContent)
+	
+	return emailContent
+}
+
+// parseEmailHeaders 解析邮件头部
+func parseEmailHeaders(header mail.Header, emailContent *EmailContent) {
+	// 解析主题
+	if subjectHeader := header.Get("Subject"); subjectHeader != "" {
+		emailContent.Subject = subjectHeader
+	}
+	
+	// 解析日期
+	if dateHeader := header.Get("Date"); dateHeader != "" {
+		emailContent.Date = dateHeader
+	} else {
+		emailContent.Date = time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700")
+	}
+	
+	// 解析发件人
+	if fromHeader := header.Get("From"); fromHeader != "" {
+		emailContent.From = fromHeader
+	}
+	
+	// 解析收件人
+	if toHeader := header.Get("To"); toHeader != "" {
+		emailContent.To = []string{toHeader}
+	}
+	
+	// 解析字符编码
+	if contentType := header.Get("Content-Type"); contentType != "" {
+		emailContent.Charset = extractCharset(contentType)
+	}
+	
+	// 存储所有头部
+	for key, values := range header {
+		if len(values) > 0 {
+			emailContent.Headers[key] = values[0]
+		}
+	}
+}
+
+// parseEmailBodyEnhanced 增强版邮件正文解析
+func parseEmailBodyEnhanced(msg *mail.Message, emailContent *EmailContent) {
+	// 读取原始正文
+	bodyBytes := make([]byte, 0, 1024*1024) // 1MB缓冲
+	buffer := make([]byte, 1024)
+	
+	for {
+		n, err := msg.Body.Read(buffer)
+		if n > 0 {
+			bodyBytes = append(bodyBytes, buffer[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+	
+	bodyContent := string(bodyBytes)
+	
+	// 检查Content-Type头部
+	contentType := msg.Header.Get("Content-Type")
+	if contentType == "" {
+		emailContent.Body = strings.TrimSpace(bodyContent)
+		return
+	}
+	
+	// 处理multipart邮件
+	if strings.Contains(strings.ToLower(contentType), "multipart") {
+		parseMultipartContent(bodyContent, contentType, emailContent)
+		return
+	}
+	
+	// 处理单一内容类型
+	if strings.Contains(strings.ToLower(contentType), "text/html") {
+		emailContent.HTMLBody = bodyContent
+		emailContent.Body = extractTextFromHTML(bodyContent)
+	} else {
+		emailContent.Body = bodyContent
+	}
+}
+
+// parseEmailFallbackEnhanced 增强版备用邮件解析器
+func parseEmailFallbackEnhanced(rawContent string) *EmailContent {
+	emailContent := &EmailContent{
+		Headers: make(map[string]string),
+		Charset: "utf-8",
+	}
+	
+	lines := strings.Split(rawContent, "\n")
+	headerSection := true
+	var bodyLines []string
+	
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		
+		if headerSection {
+			// 空行表示头部结束，正文开始
+			if strings.TrimSpace(line) == "" {
+				headerSection = false
+				continue
+			}
+			
+			// 解析邮件头
+			if strings.HasPrefix(strings.ToLower(line), "subject:") {
+				emailContent.Subject = strings.TrimSpace(line[8:])
+			} else if strings.HasPrefix(strings.ToLower(line), "date:") {
+				emailContent.Date = strings.TrimSpace(line[5:])
+			} else if strings.HasPrefix(strings.ToLower(line), "from:") {
+				emailContent.From = strings.TrimSpace(line[5:])
+			} else if strings.HasPrefix(strings.ToLower(line), "to:") {
+				emailContent.To = []string{strings.TrimSpace(line[3:])}
+			} else if strings.HasPrefix(strings.ToLower(line), "content-type:") {
+				emailContent.Charset = extractCharset(strings.TrimSpace(line[13:]))
+			}
+			
+			// 存储所有头部
+			if colonIndex := strings.Index(line, ":"); colonIndex > 0 {
+				key := strings.TrimSpace(line[:colonIndex])
+				value := strings.TrimSpace(line[colonIndex+1:])
+				emailContent.Headers[key] = value
+			}
+		} else {
+			// 处理邮件正文
+			bodyLines = append(bodyLines, line)
+		}
+	}
+	
+	// 处理multipart邮件
+	body := strings.Join(bodyLines, "\n")
+	emailContent.Body = extractTextFromMultipart(body)
+	
+	// 如果没有解析到日期，使用当前时间
+	if emailContent.Date == "" {
+		emailContent.Date = time.Now().Format("Mon, 02 Jan 2006 15:04:05 -0700")
+	}
+	
+	// 检测签名和自动回复
+	detectSignatureAndAutoReply(emailContent)
+	
+	return emailContent
+}
+
+// extractCharset 从 Content-Type 中提取字符编码
+func extractCharset(contentType string) string {
+	parts := strings.Split(contentType, ";")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(strings.ToLower(part), "charset=") {
+			charset := strings.TrimPrefix(strings.ToLower(part), "charset=")
+			charset = strings.Trim(charset, `"'`)
+			return charset
+		}
+	}
+	return "utf-8"
+}
+
+
+// extractTextFromHTML 从HTML中提取纯文本
+func extractTextFromHTML(htmlContent string) string {
+	if htmlContent == "" {
+		return ""
+	}
+	
+	// 移除HTML标签
+	re := regexp.MustCompile(`<[^>]*>`)
+	text := re.ReplaceAllString(htmlContent, "")
+	
+	// 清理多余的空白字符
+	text = regexp.MustCompile(`\s+`).ReplaceAllString(text, " ")
+	text = strings.TrimSpace(text)
+	
+	return text
+}
+
+// detectSignatureAndAutoReply 检测邮件签名和自动回复
+func detectSignatureAndAutoReply(emailContent *EmailContent) {
+	// 检测自动回复
+	emailContent.IsAutoReply = isAutoReply(emailContent)
+	
+	// 检测并提取签名
+	emailContent.Signature = extractSignature(emailContent.Body)
+}
+
+// isAutoReply 检查是否为自动回复邮件
+func isAutoReply(emailContent *EmailContent) bool {
+	// 检查主题中的自动回复关键词
+	subject := strings.ToLower(emailContent.Subject)
+	autoReplyKeywords := []string{
+		"automatic reply", "auto reply", "auto-reply", "out of office",
+		"vacation", "holiday", "absent", "away", "unavailable",
+		"自动回复", "外出", "休假", "不在", "离开", "无法接收",
+		"vacation message", "out-of-office", "autoreply",
+	}
+	
+	for _, keyword := range autoReplyKeywords {
+		if strings.Contains(subject, keyword) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// extractSignature 提取邮件签名
+func extractSignature(body string) string {
+	lines := strings.Split(body, "\n")
+	
+	// 寻找签名分隔符
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		
+		// 检查标准签名分隔符
+		if trimmed == "-- " || trimmed == "--" {
+			if i+1 < len(lines) {
+				signature := strings.Join(lines[i+1:], "\n")
+				return strings.TrimSpace(signature)
+			}
+		}
+	}
+	
+	return ""
+}
+
+// extractEmbeddedContent 提取嵌入式内容（图片、链接等）
+func extractEmbeddedContent(emailContent *EmailContent) map[string][]string {
+	embeddedContent := make(map[string][]string)
+	
+	// 从HTML正文中提取
+	if emailContent.HTMLBody != "" {
+		embeddedContent["images"] = extractImages(emailContent.HTMLBody)
+		embeddedContent["links"] = extractLinks(emailContent.HTMLBody)
+	}
+	
+	// 从纯文本正文中提取链接
+	if emailContent.Body != "" {
+		textLinks := extractLinksFromText(emailContent.Body)
+		embeddedContent["links"] = append(embeddedContent["links"], textLinks...)
+	}
+	
+	return embeddedContent
+}
+
+// extractImages 从HTML中提取图片
+func extractImages(htmlContent string) []string {
+	var images []string
+	
+	// 提取img标签的src属性
+	re := regexp.MustCompile(`(?i)<img[^>]+src\s*=\s*["']([^"']+)["']`)
+	matches := re.FindAllStringSubmatch(htmlContent, -1)
+	
+	for _, match := range matches {
+		if len(match) > 1 {
+			images = append(images, match[1])
+		}
+	}
+	
+	return images
+}
+
+// extractLinks 从HTML中提取链接
+func extractLinks(htmlContent string) []string {
+	var links []string
+	
+	// 提取a标签的href属性
+	re := regexp.MustCompile(`(?i)<a[^>]+href\s*=\s*["']([^"']+)["']`)
+	matches := re.FindAllStringSubmatch(htmlContent, -1)
+	
+	for _, match := range matches {
+		if len(match) > 1 {
+			links = append(links, match[1])
+		}
+	}
+	
+	return links
+}
+
+// extractLinksFromText 从纯文本中提取链接
+func extractLinksFromText(text string) []string {
+	var links []string
+	
+	// 提取HTTP/HTTPS链接
+	re := regexp.MustCompile(`https?://[^\s<>"{}|\\^` + "`" + `\[\]]+`)
+	matches := re.FindAllString(text, -1)
+	links = append(links, matches...)
+	
+	// 提取邮件地址
+	re = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	matches = re.FindAllString(text, -1)
+	for _, match := range matches {
+		links = append(links, "mailto:"+match)
+	}
+	
+	return links
+}
+
+// parseMultipartContent 解析多部分MIME内容
+func parseMultipartContent(bodyContent, contentType string, emailContent *EmailContent) {
+	// 提取boundary
+	boundary := extractBoundary(contentType)
+	if boundary == "" {
+		// 如果没有boundary，使用原有的解析方法
+		emailContent.Body = extractTextFromMultipart(bodyContent)
+		return
+	}
+	
+	// 按boundary分割内容
+	parts := strings.Split(bodyContent, "--"+boundary)
+	
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" || part == "--" {
+			continue
+		}
+		
+		// 分离头部和正文
+		headerEnd := strings.Index(part, "\n\n")
+		if headerEnd == -1 {
+			headerEnd = strings.Index(part, "\r\n\r\n")
+		}
+		if headerEnd == -1 {
+			continue
+		}
+		
+		headerSection := part[:headerEnd]
+		bodySection := part[headerEnd+2:]
+		
+		// 解析头部
+		headers := parsePartHeaders(headerSection)
+		contentType := headers["Content-Type"]
+		contentDisposition := headers["Content-Disposition"]
+		contentTransferEncoding := headers["Content-Transfer-Encoding"]
+		
+		// 解码内容
+		decodedBody := decodeTransferEncoding(bodySection, contentTransferEncoding)
+		
+		// 处理不同的内容类型
+		if strings.Contains(strings.ToLower(contentType), "text/plain") {
+			if emailContent.Body == "" {
+				emailContent.Body = decodedBody
+			}
+		} else if strings.Contains(strings.ToLower(contentType), "text/html") {
+			if emailContent.HTMLBody == "" {
+				emailContent.HTMLBody = decodedBody
+			}
+			if emailContent.Body == "" {
+				emailContent.Body = extractTextFromHTML(decodedBody)
+			}
+		} else if isAttachment(contentDisposition) || hasFilename(contentType, contentDisposition) {
+			// 处理附件
+			attachment := AttachmentInfo{
+				Filename:    extractFilename(contentType, contentDisposition),
+				ContentType: contentType,
+				Size:        int64(len(decodedBody)),
+				Content:     []byte(decodedBody),
+				CID:         extractContentID(headers["Content-ID"]),
+				Disposition: extractDisposition(contentDisposition),
+			}
+			emailContent.Attachments = append(emailContent.Attachments, attachment)
+		}
+	}
+}
+
+// parsePartHeaders 解析部分头部
+func parsePartHeaders(headerSection string) map[string]string {
+	headers := make(map[string]string)
+	lines := strings.Split(headerSection, "\n")
+	
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		colonIndex := strings.Index(line, ":")
+		if colonIndex > 0 {
+			key := strings.TrimSpace(line[:colonIndex])
+			value := strings.TrimSpace(line[colonIndex+1:])
+			headers[key] = value
+		}
+	}
+	
+	return headers
+}
+
+// extractBoundary 提取MIME边界
+func extractBoundary(contentType string) string {
+	parts := strings.Split(contentType, ";")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(strings.ToLower(part), "boundary=") {
+			boundary := strings.TrimPrefix(part, "boundary=")
+			boundary = strings.Trim(boundary, `"'`)
+			return boundary
+		}
+	}
+	return ""
+}
+
+
+// isAttachment 检查是否为附件
+func isAttachment(contentDisposition string) bool {
+	return strings.Contains(strings.ToLower(contentDisposition), "attachment")
+}
+
+// hasFilename 检查是否有文件名
+func hasFilename(contentType, contentDisposition string) bool {
+	return extractFilename(contentType, contentDisposition) != ""
+}
+
+// extractFilename 提取文件名
+func extractFilename(contentType, contentDisposition string) string {
+	// 首先从Content-Disposition中提取
+	if contentDisposition != "" {
+		if filename := extractFilenameFromHeader(contentDisposition); filename != "" {
+			return filename
+		}
+	}
+	
+	// 然后从Content-Type中提取
+	if contentType != "" {
+		if filename := extractFilenameFromHeader(contentType); filename != "" {
+			return filename
+		}
+	}
+	
+	return ""
+}
+
+// extractFilenameFromHeader 从邮件头中提取文件名
+func extractFilenameFromHeader(header string) string {
+	// 处理 filename= 格式
+	patterns := []string{
+		`filename="([^"]+)"`,
+		`filename=([^;\s]+)`,
+		`name="([^"]+)"`,
+		`name=([^;\s]+)`,
+	}
+	
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(`(?i)` + pattern)
+		if matches := re.FindStringSubmatch(header); len(matches) > 1 {
+			return matches[1]
+		}
+	}
+	
+	return ""
+}
+
+// extractContentID 提取Content-ID
+func extractContentID(contentID string) string {
+	// 移除< >包围符号
+	contentID = strings.Trim(contentID, "<>")
+	return contentID
+}
+
+// extractDisposition 提取内容处理方式
+func extractDisposition(contentDisposition string) string {
+	if contentDisposition == "" {
+		return "attachment"
+	}
+	
+	parts := strings.Split(contentDisposition, ";")
+	if len(parts) > 0 {
+		disposition := strings.TrimSpace(strings.ToLower(parts[0]))
+		if disposition == "inline" || disposition == "attachment" {
+			return disposition
+		}
+	}
+	
+	return "attachment"
+}
+
+// apiAttachments 处理附件下载请求
+func (ms *MailServer) apiAttachments(w http.ResponseWriter, r *http.Request) {
+	// 设置CORS头
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	// 处理OPTIONS预检请求
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 解析URL: /api/attachments/mailbox/emailID/attachmentIndex
+	path := strings.TrimPrefix(r.URL.Path, "/api/attachments/")
+	parts := strings.Split(path, "/")
+	
+	if len(parts) < 3 {
+		http.Error(w, "Invalid URL format. Expected: /api/attachments/mailbox/emailID/attachmentIndex", http.StatusBadRequest)
+		return
+	}
+	
+	mailbox := parts[0]
+	emailID := parts[1]
+	attachmentIndex := parts[2]
+	
+	// 获取邮件
+	emails := ms.GetEmails(mailbox)
+	var targetEmail *Email
+	
+	for _, email := range emails {
+		if email.ID == emailID {
+			targetEmail = &email
+			break
+		}
+	}
+	
+	if targetEmail == nil {
+		http.Error(w, "Email not found", http.StatusNotFound)
+		return
+	}
+	
+	// 解析附件索引
+	index := 0
+	if attachmentIndex != "" {
+		fmt.Sscanf(attachmentIndex, "%d", &index)
+	}
+	
+	if index < 0 || index >= len(targetEmail.Attachments) {
+		http.Error(w, "Attachment not found", http.StatusNotFound)
+		return
+	}
+	
+	attachment := targetEmail.Attachments[index]
+	
+	// 设置下载头
+	w.Header().Set("Content-Type", attachment.ContentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", attachment.Filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(attachment.Content)))
+	
+	// 输出附件内容
+	w.Write(attachment.Content)
+}
+
+// apiInlineAttachments 处理内联附件（图片）显示请求
+func (ms *MailServer) apiInlineAttachments(w http.ResponseWriter, r *http.Request) {
+	// 设置CORS头
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	// 处理OPTIONS预检请求
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 解析URL: /api/attachments/inline/mailbox/emailID/cid
+	path := strings.TrimPrefix(r.URL.Path, "/api/attachments/inline/")
+	parts := strings.Split(path, "/")
+	
+	if len(parts) < 3 {
+		http.Error(w, "Invalid URL format. Expected: /api/attachments/inline/mailbox/emailID/cid", http.StatusBadRequest)
+		return
+	}
+	
+	mailbox := parts[0]
+	emailID := parts[1]
+	cid := parts[2]
+	
+	// 获取邮件
+	emails := ms.GetEmails(mailbox)
+	var targetEmail *Email
+	
+	for _, email := range emails {
+		if email.ID == emailID {
+			targetEmail = &email
+			break
+		}
+	}
+	
+	if targetEmail == nil {
+		http.Error(w, "Email not found", http.StatusNotFound)
+		return
+	}
+	
+	// 查找对应CID的内联附件
+	var targetAttachment *AttachmentInfo
+	for _, attachment := range targetEmail.Attachments {
+		if attachment.CID == cid && attachment.Disposition == "inline" {
+			targetAttachment = &attachment
+			break
+		}
+	}
+	
+	if targetAttachment == nil {
+		http.Error(w, "Inline attachment not found", http.StatusNotFound)
+		return
+	}
+	
+	// 设置图片显示头
+	w.Header().Set("Content-Type", targetAttachment.ContentType)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(targetAttachment.Content)))
+	w.Header().Set("Cache-Control", "public, max-age=3600") // 缓存1小时
+	
+	// 输出图片内容
+	w.Write(targetAttachment.Content)
 }

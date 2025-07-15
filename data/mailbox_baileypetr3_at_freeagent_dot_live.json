@@ -1,0 +1,78 @@
+[
+  {
+    "from": "baileypetr3@gmail.com",
+    "to": "baileypetr3@freeagent.live",
+    "subject": "=?UTF-8?B?55qE6aaW5Y+R5byP5Y+R55Sf?=",
+    "body": "[image: 8a7fa204adb13b0bd295426200f6397.png]",
+    "date": "Tue, 15 Jul 2025 18:02:58 +0800",
+    "is_auto_reply": false,
+    "charset": "utf-8",
+    "headers": {
+      "03": "03:09 -0700 (PDT)",
+      "Content-Type": "multipart/mixed; boundary=\"00000000000032afd50639f4e2b9\"",
+      "DKIM-Signature": "v=1; a=rsa-sha256; c=relaxed/relaxed;",
+      "Date": "Tue, 15 Jul 2025 18:02:58 +0800",
+      "From": "Petr Bailey \u003cbaileypetr3@gmail.com\u003e",
+      "MIME-Version": "1.0",
+      "Message-ID": "\u003cCALYDFKFiNG7basWN3gwn-j+RrH=cRXiCwUAmQQ7XatZnb+tbtQ@mail.gmail.com\u003e",
+      "Received": "by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-ae0b2ead33cso920043666b.0",
+      "Subject": "=?UTF-8?B?55qE6aaW5Y+R5byP5Y+R55Sf?=",
+      "To": "baileypetr3@freeagent.live",
+      "X-Gm-Features": "Ac12FXyNKsjEoeWPJcUNJgLWIbEQN67ZEt1oU52Y2E1-h264xXSuIkNuh_0Jp8A",
+      "X-Gm-Gg": "ASbGncv+nF6rsUVsSZz3v7MBXbB9SSzOYh7Hx0cmJWAP1Cfn49MGi1Id9mpT2/Oay9/",
+      "X-Gm-Message-State": "AOJu0YywO/4jeSXaFM6d/WtjydQaT61YWbt5oEQfdqK3D6Fdv30arxbN",
+      "X-Google-DKIM-Signature": "v=1; a=rsa-sha256; c=relaxed/relaxed;",
+      "X-Google-Smtp-Source": "AGHT+IFyM1Kr/3K4Ja8QiG6tQKzw9S0Ka9coats5tTrvWroAYNjq7bxcmFxkYJk7jsgs/0jBRRV0bcBw4a1748JF7o4=",
+      "X-Received": "by 2002:a17:907:96a0:b0:ad2:e08:e9e2 with SMTP id",
+      "for \u003cbaileypetr3@freeagent.live\u003e; Tue, 15 Jul 2025 03": "03:12 -0700 (PDT)",
+      "h=to": "subject:message-id:date:from:mime-version:x-gm-message-state"
+    },
+    "embedded": {
+      "links": null
+    },
+    "id": "baileypetr3_at_freeagent.live_1752573796414932483_72c008e4",
+    "timestamp": "2025-07-15T18:19:32.814672869+08:00",
+    "flags": []
+  },
+  {
+    "from": "bounces+20216706-fb97-baileypetr3=freeagent.live@em7877.tm.openai.com",
+    "to": "baileypetr3@freeagent.live",
+    "subject": "Your OpenAI code is 063316",
+    "body": "\u003chtml\u003e\n\u003chead\u003e\n\u003ctitle\u003eYour OpenAI code is 063316\u003c/title\u003e\n\u003cmeta name=3D\"viewport\" content=3D\"width=3Ddevice-width, initial-scale=\n=3D1\" /\u003e\n\u003cstyle type=3D\"text/css\"\u003e\n@font-face {\nfont-family: \"S=C3=B6hne\";\nsrc: url(https://cdn.openai.com/common/fonts/soehne/soehne-buch.wof=\nf2)\nformat(\"woff2\");\nfont-style: normal;\nfont-weight: 400;\nfont-display: swap;\n}\n.ExternalClass,\n.ExternalClass div,\n.ExternalClass font,\n.ExternalClass p,\n.ExternalClass span,\n.ExternalClass td,\nimg {\nline-height: 100%;\n}\n#outlook a {\npadding: 0;\n}\n.ExternalClass,\n.ReadMsgBody {\nwidth: 100%;\n}\na,\nblockquote,\nbody,\nli,\np,\ntable,\ntd {\n-webkit-text-size-adjust: 100%;\n-ms-text-size-adjust: 100%;\n}\ntable,\ntd {\nmso-table-lspace: 0;\nmso-table-rspace: 0;\n}\nimg {\n-ms-interpolation-mode: bicubic;\nborder: 0;\nheight: auto;\noutline: 0;\ntext-decoration: none;\n}\ntable {\nborder-collapse: collapse !important;\n}\n#bodyCell,\n#bodyTable,\nbody {\nheight: 100% !important;\nmargin: 0;\npadding: 0;\nfont-family: S=C3=B6hne, Roboto, Helvetica, Arial, sans-serif;\n}\n\n#bodyCell {\npadding: 20px;\n}\n#bodyTable {\nwidth: 560px;\n}\n@media only screen and (max-width: 480px) {\n#bodyCell,\n#bodyTable,\nbody {\nwidth: 100% !important;\n}\na,\nblockquote,\nbody,\nli,\np,\ntable,\ntd {\n-webkit-text-size-adjust: none !important;\n}\nbody {\nmin-width: 100% !important;\n}\n#bodyTable {\nmax-width: 560px !important;\n}\n#signIn {\nmax-width: 280px !important;\n}\n}\n\u003c/style\u003e\n\u003c!--[if mso]\u003e\n\u003cstyle type=3D\"text/css\"\u003e\n#bodyCell,\n#bodyTable,\nbody {\nfont-family: Helvetica, Arial, sans-serif; !important\n}\n\u003c/style\u003e\n\u003c![endif]--\u003e\n\n\u003c/head\u003e\n\u003cbody\u003e\n\u003ccenter\u003e\n\u003ctable\nstyle=3D\"width: 560px;-webkit-text-size-adjust: 100%;-ms-text-size-=\nadjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;margin: 0;padding:=\n0;border-collapse: collapse !important;height: 100% !important;background-=\ncolor: #ffffff;\"\nalign=3D\"center\"\nborder=3D\"0\"\ncellpadding=3D\"0\"\ncellspacing=3D\"0\"\nheight=3D\"100%\"\nwidth=3D\"100%\"\nid=3D\"bodyTable\"\n\u003e\n\u003ctr\u003e\n\u003ctd\nalign=3D\"center\"\nvalign=3D\"top\"\nid=3D\"bodyCell\"\nstyle=3D\"-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 1=\n00%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;margin: 0;padding: 0 16px;h=\neight: 100% !important;\"\n\u003e\n\u003cdiv class=3D\"top\" style=3D\"background-color: #ffffff;color:#20=\n2123; padding: 56px 0 32px 0;\"\u003e\n\u003cp\nstyle=3D\"text-align: left;-webkit-text-size-adjust: 100%;-m=\ns-text-size-adjust: 100%; margin: 0;\"\n\u003e\n\u003cimg\nsrc=3D\"https://cdn.openai.com/API/logo-assets/openai-logo=\n-email-header-2.png\"\nwidth=3D\"560\"\nheight=3D\"168\"\nalt=3D\"OpenAI\"\ntitle=3D\"\"\nstyle=3D\"height:36px;width:auto;-ms-interpolation-mode: b=\nicubic;border: 0;line-height: 100%;outline: none;text-decoration: none;\"\n\u003e\n\u003c/p\u003e\n\u003c/div\u003e\n\u003ctable\nclass=3D\"main\"\n\u003e\n\u003ctr\u003e\n\u003ctd style=3D\"background-color: #ffffff;color:#353740; tex=\nt-align: left; line-height:1.5;\"\u003e\n\u003cp style=3D\"font-size: 16px; line-height: 24px; margi=\nn: 0;\"\u003e\nEnter this temporary verification code to continue:\n\u003c/p\u003e\n\n\u003cp style=3D\"font-family: Menlo, Monaco, Lucida Consol=\ne, Arial; font-size: 24px; line-height: 28px; background-color: #F3F3F3; co=\nlor: #5D5D5D; border-radius: 16px; padding: 28px 24px; margin: 24px 0;\"\u003e\n\u003c!--[if mso]\u003e\n\u003cspan style=3D\"font-family: Lucida Console, Ari=\nal, sans-serif;\"\u003e\n\u003c![endif]--\u003e\n063316\n\u003c!--[if mso]\u003e\n\u003c/span\u003e\n\u003c![endif]--\u003e\n\u003c/p\u003e\n\n\u003cp style=3D\"font-size: 16px; line-height: 24px; text-=\nalign: left; margin: 0; margin-bottom: 24px;\"\u003e\nPlease ignore this email if this wasn=E2=80=99t you=\ntrying to create a OpenAI account.\n\u003c/p\u003e\n\n\u003cp style=3D\"-webkit-text-size-adjust: 100%;-ms-text-s=\nize-adjust: 100%; margin: 0; color: #8F8F8F;\"\u003e\n\u003cbr/\u003eBest,\u003cbr/\u003eThe OpenAI team\n\u003c/p\u003e\n\u003c/td\u003e\n\u003c/tr\u003e\n\n\u003ctr\u003e\n\u003ctd\u003e\n\u003cp style=3D\"height: 1px; width: 100%; background: #E5E5=\nE5; margin: 40px 0;\"\u003e\u003c/p\u003e\n\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/table\u003e\n\u003ctable\nclass=3D\"footer\"\nstyle=3D\"text-align: left;background: #ffffff;color:#6e6e80;w=\nidth: 100%;\"\n\u003e\n\u003ctr\u003e\n\u003ctd\u003e\n\u003cimg\nsrc=3D\"https://cdn.openai.com/API/logo-assets/opena=\ni-logo-email-header-2.png\"\nwidth=3D\"64\"\nalt=3D\"OpenAI\"\ntitle=3D\"\"\nstyle=3D\"width:64px;height:auto;-ms-interpolation-m=\node: bicubic;border: 0;line-height: 100%;outline: none;text-decoration: non=\ne;margin-bottom: 16px;\"\n\u003e\n\n\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd style=3D\"font-size: 12px; line-height: 16px; paddin=\ng-bottom: 16px;\"\u003e\n\u003cp style=3D\"margin: 0;\"\u003e\n=20\n\u003ca style=3D\"color: #8F8F8F\" href=3D\"https://u20=\n216706.ct.sendgrid.net/ls/click?upn=3Du001.IQLfsj4kk-2BK7JhymNusRMln2iCRlMJ=\nczGIEFP3mxWWw-3DloBE_ZdwiKtQJOUGI9oqb834-2FPaMvW7PKJsFTl-2BVv8Fn9JBa8fEZ2h2=\nRbaej-2FdGRl4m2sGruqjA798vqs9H-2Bi65oS6TXyMpuBde3E42UN7GGLjWOMiqxr6t4NyQs0r=\nkuBaPHrzcSHovt-2Fp4-2FEObma5uDE3kgpAjewTvL3rdwvnIDkMDC2KskB7V6OsncgfcJyp9eV=\n-2FEB6T7LK9jwRyicbwLCcdkFJ7GOYEkcRiJY8EXxE2W9IhEK1BUlIu-2BxL2QERjcqpPGNtTnI=\nF2Ep-2FwApEbnNaEk1V7vy66Y03LXASDU8d-2FHwtA0AnsPZgqs1IlcXNcCMUEUrXyf2zM-2FZI=\np5B6aLVwN-2FHSLeVmlYhXrTAxhsSa65kSXM-2BvHxW42cLVOkTeaoOrTTq25GsgM6FFWbu-2Fz=\nfnliQ-3D-3D\"\u003eOpenAI\u003c/a\u003e\n=20\n\n\u003c/p\u003e\n\u003cp style=3D\"margin: 0;\"\u003e\n\u003ca style=3D\"color: #8F8F8F\" href=3D\"https://u20=\n216706.ct.sendgrid.net/ls/click?upn=3Du001.IQLfsj4kk-2BK7JhymNusRMmfwoG2v3n=\nTgHW39-2Fobue0tn1LK51XoZKbBfyGht7CMa70PW_ZdwiKtQJOUGI9oqb834-2FPaMvW7PKJsFT=\nl-2BVv8Fn9JBa8fEZ2h2Rbaej-2FdGRl4m2sGruqjA798vqs9H-2Bi65oS6TXyMpuBde3E42UN7=\nGGLjWOMiqxr6t4NyQs0rkuBaPHrzcSHovt-2Fp4-2FEObma5uDE3kgpAjewTvL3rdwvnIDkMDC2=\nKskB7V6OsncgfcJyp9eV-2FEB6T7LK9jwRyicbwLCcdqFIcmsml-2BQtW8dORYQ28oGNpzYO4gA=\nDaJr0kdtjnRnrMRU0AzbdYhbB-2FXtD5TEtzXqTRUE3PAn7Dt-2BB2puTtV12ObqI3fSq-2Bf5A=\nk620G5l8I-2F2k9y0-2FsdNKWf8wgw8mC4xxO6HgjOnfwYkw2QiSByMrMykrskyui8PqipyTH62=\nSoupytdioTPSOcaKmukknSA-3D-3D\"\u003eHelp center\u003c/a\u003e\n\u003c/p\u003e\n\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/table\u003e\n\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/table\u003e\n\u003c/center\u003e\n\u003cimg src=3D\"https://u20216706.ct.sendgrid.net/wf/open?upn=3Du001.IC4-2FcN=\nsibROmRx5tsA-2BAnZGCfxwZtpK2vDWDOhlvNxrH4CXJk4Zfj7yGRFZSn5c-2FWQaePUBkviWAz=\n8aRlqaToQ31680vHT8JFxbtHAPQA3qkp0A0qqMghy1glL6qHhY23K8dviFzjUfjrsAKsb2PHqGc=\nS-2BpgWb-2F0SJLJyDk-2FHescuXYN1-2FWoSefbnCi7rx-2BRIPmQco-2BEtfj4Lwi72-2Fe7P=\nZE-2BMxhAZqx54Vm5btBeO0M-2BWLd228WxbhfhJe5zHTJwVc8H2XnSKiOgY3Pq911WJ9pmeOMC=\n5yQoc-2FICCp96CG-2BD77dOtDTyRJ-2FSN37TFZCn1x3PyU3mZsroFJopWwdZHMAJExb-2F63b=\nbhQmOVrOxD-2B4D8VF9Uhm-2BOx2jRkY3Mg9y4hjT9fN6HW9smn9X6TycGw-3D-3D\" alt=3D\"\"=\nwidth=3D\"1\" height=3D\"1\" border=3D\"0\" style=3D\"height:1px !important;width=\n:1px !important;border-width:0 !important;margin-top:0 !important;margin-bo=\nttom:0 !important;margin-right:0 !important;margin-left:0 !important;paddin=\ng-top:0 !important;padding-bottom:0 !important;padding-right:0 !important;p=\nadding-left:0 !important;\"/\u003e\u003c/body\u003e\n\u003c/html\u003e",
+    "date": "Tue, 15 Jul 2025 10:19:31 +0000 (UTC)",
+    "is_auto_reply": false,
+    "charset": "utf-8",
+    "headers": {
+      "2025-07-15 10": "19:31.126868113 +0000 UTC m=+3582647.372344262",
+      "Content-Transfer-Encoding": "quoted-printable",
+      "Content-Type": "text/html; charset=utf-8",
+      "DKIM-Signature": "v=1; a=rsa-sha256; c=relaxed/relaxed; d=tm.openai.com;",
+      "Date": "Tue, 15 Jul 2025 10:19:31 +0000 (UTC)",
+      "From": "noreply@tm.openai.com",
+      "Message-ID": "\u003c9Sc_r25eRkeN2QB-okCnSQ@geopod-ismtpd-12\u003e",
+      "Mime-Version": "1.0",
+      "Received": "from MjAyMTY3MDY (unknown)",
+      "Subject": "Your OpenAI code is 063316",
+      "To": "baileypetr3@freeagent.live",
+      "Tue, 15 Jul 2025 10": "19:31.100 +0000 (UTC)",
+      "X-Entity-ID": "u001.bVuJR+6WQkYgHBZFem2ybw==",
+      "X-SG-EID": "",
+      "X-SG-ID": "",
+      "h=content-transfer-encoding": "content-type:date:from:mime-version:subject:",
+      "to": "cc:content-type:date:from:subject:to;"
+    },
+    "embedded": {
+      "links": [
+        "https://cdn.openai.com/common/fonts/soehne/soehne-buch.wof=",
+        "https://cdn.openai.com/API/logo-assets/openai-logo=",
+        "https://cdn.openai.com/API/logo-assets/opena=",
+        "https://u20=",
+        "https://u20=",
+        "https://u20216706.ct.sendgrid.net/wf/open?upn=3Du001.IC4-2FcN="
+      ]
+    },
+    "id": "baileypetr3_at_freeagent.live_1752574772814249738_a563760b",
+    "timestamp": "2025-07-15T18:19:32.814672989+08:00",
+    "flags": []
+  }
+]
