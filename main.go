@@ -277,6 +277,7 @@ func (ms *MailServer) StartWebServer(port string) {
 	http.HandleFunc("/api/auth/2fa/enable", ms.apiAuth2FAEnable)
 	http.HandleFunc("/api/auth/2fa/disable", ms.apiAuth2FADisable)
 	http.HandleFunc("/api/auth/2fa/verify", ms.apiAuth2FAVerify)
+	http.HandleFunc("/api/auth/2fa/status", ms.apiAuth2FAStatus)
 	
 	// SMTP中继API
 	http.HandleFunc("/api/relay/config", ms.apiRelayConfig)
@@ -2744,4 +2745,43 @@ func (ms *MailServer) apiAuth2FAVerify(w http.ResponseWriter, r *http.Request) {
 	valid := ms.userAuth.Verify2FA(req.Email, req.Code)
 	
 	json.NewEncoder(w).Encode(map[string]bool{"valid": valid})
+}
+
+// apiAuth2FAStatus 获取用户2FA状态
+func (ms *MailServer) apiAuth2FAStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	
+	// 验证JWT token
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		return
+	}
+	
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	claims, err := ms.userAuth.ValidateJWTToken(tokenString)
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	
+	// 获取用户信息
+	user, exists := ms.userAuth.GetUser(claims.Email)
+	if !exists {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
+	// 返回2FA状态
+	response := map[string]bool{
+		"enabled": user.TwoFactorEnabled,
+	}
+	
+	json.NewEncoder(w).Encode(response)
 }

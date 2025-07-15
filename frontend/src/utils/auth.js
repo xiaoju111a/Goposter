@@ -366,6 +366,31 @@ export const twoFactorAuth = {
     }
 
     return await response.json();
+  },
+
+  // 获取用户2FA状态
+  async getStatus() {
+    const accessToken = auth.getAccessToken();
+    if (!accessToken) throw new Error('Not authenticated');
+
+    const response = await fetch('/api/auth/2fa/status', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      // 如果API不存在，尝试从用户信息推断
+      if (response.status === 404) {
+        return { enabled: false };
+      }
+      const error = await response.json();
+      throw new Error(error.message || '获取2FA状态失败');
+    }
+
+    return await response.json();
   }
 };
 

@@ -14,6 +14,7 @@ const SecuritySettings = () => {
 
   useEffect(() => {
     loadSecurityData();
+    load2FAStatus();
   }, []);
 
   const loadSecurityData = async () => {
@@ -27,6 +28,17 @@ const SecuritySettings = () => {
       setAuditLogs(logs);
     } catch (error) {
       console.error('Failed to load security data:', error);
+    }
+  };
+
+  const load2FAStatus = async () => {
+    try {
+      const status = await twoFactorAuth.getStatus();
+      setIs2FAEnabled(status.enabled || false);
+    } catch (error) {
+      console.error('Failed to load 2FA status:', error);
+      // 如果API调用失败，默认为未启用
+      setIs2FAEnabled(false);
     }
   };
 
@@ -79,11 +91,16 @@ const SecuritySettings = () => {
     setError('');
 
     try {
-      const result = await twoFactorAuth.verify('admin@freeagent.live', verificationCode);
+      const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+      const result = await twoFactorAuth.verify(userEmail, verificationCode);
       if (result.valid) {
         setIs2FAEnabled(true);
+        setQrCode('');
+        setSecret('');
         setSuccess('验证成功！双因素认证已激活。');
         setVerificationCode('');
+        // 重新加载2FA状态以确保同步
+        await load2FAStatus();
       } else {
         setError('验证码无效，请重试。');
       }
