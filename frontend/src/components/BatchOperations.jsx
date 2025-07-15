@@ -24,70 +24,6 @@ const BatchOperations = ({
   const [exportFormat, setExportFormat] = useState('json');
   const [confirmAction, setConfirmAction] = useState(null);
   
-  // 操作配置
-  const operations = [
-    {
-      id: 'delete',
-      label: '删除邮件',
-      icon: '🗑️',
-      color: '#f44336',
-      requiresConfirm: true,
-      action: () => setConfirmAction({
-        title: '确认删除',
-        message: `确定要删除 ${selectedEmails.length} 封邮件吗？此操作不可撤销。`,
-        action: handleDelete
-      })
-    },
-    {
-      id: 'move',
-      label: '移动到',
-      icon: '📂',
-      color: '#2196F3',
-      hasOptions: true,
-      component: MoveOptions
-    },
-    {
-      id: 'markRead',
-      label: '标记为已读',
-      icon: '✅',
-      color: '#4CAF50',
-      action: handleMarkRead
-    },
-    {
-      id: 'markUnread',
-      label: '标记为未读',
-      icon: '📩',
-      color: '#FF9800',
-      action: handleMarkUnread
-    },
-    {
-      id: 'addTag',
-      label: '添加标签',
-      icon: '🏷️',
-      color: '#9C27B0',
-      hasOptions: true,
-      component: TagOptions
-    },
-    {
-      id: 'export',
-      label: '导出邮件',
-      icon: '💾',
-      color: '#607D8B',
-      hasOptions: true,
-      component: ExportOptions
-    }
-  ];
-  
-  // 处理全选
-  const handleSelectAll = useCallback(() => {
-    onSelectAll?.(allEmails);
-  }, [allEmails, onSelectAll]);
-  
-  // 处理取消全选
-  const handleSelectNone = useCallback(() => {
-    onSelectNone?.();
-  }, [onSelectNone]);
-  
   // 处理删除
   const handleDelete = useCallback(async () => {
     try {
@@ -169,6 +105,70 @@ const BatchOperations = ({
       alert('导出失败，请重试');
     }
   }, [selectedEmails, exportFormat, onExport]);
+
+  // 操作配置
+  const operations = [
+    {
+      id: 'delete',
+      label: '删除邮件',
+      icon: '🗑️',
+      color: '#f44336',
+      requiresConfirm: true,
+      action: () => setConfirmAction({
+        title: '确认删除',
+        message: `确定要删除 ${selectedEmails.length} 封邮件吗？此操作不可撤销。`,
+        action: handleDelete
+      })
+    },
+    {
+      id: 'move',
+      label: '移动到',
+      icon: '📂',
+      color: '#2196F3',
+      hasOptions: true,
+      component: MoveOptions
+    },
+    {
+      id: 'markRead',
+      label: '标记为已读',
+      icon: '✅',
+      color: '#4CAF50',
+      action: handleMarkRead
+    },
+    {
+      id: 'markUnread',
+      label: '标记为未读',
+      icon: '📩',
+      color: '#FF9800',
+      action: handleMarkUnread
+    },
+    {
+      id: 'addTag',
+      label: '添加标签',
+      icon: '🏷️',
+      color: '#9C27B0',
+      hasOptions: true,
+      component: TagOptions
+    },
+    {
+      id: 'export',
+      label: '导出邮件',
+      icon: '💾',
+      color: '#607D8B',
+      hasOptions: true,
+      component: ExportOptions
+    }
+  ];
+  
+  // 处理全选
+  const handleSelectAll = useCallback(() => {
+    onSelectAll?.(allEmails);
+  }, [allEmails, onSelectAll]);
+  
+  // 处理取消全选
+  const handleSelectNone = useCallback(() => {
+    onSelectNone?.();
+  }, [onSelectNone]);
   
   // 选择状态
   const isAllSelected = selectedEmails.length === allEmails.length && allEmails.length > 0;
@@ -451,6 +451,11 @@ const BatchOperations = ({
   
   // 当没有选中邮件时，不显示组件
   if (selectedEmails.length === 0 && !isOpen) {
+    // 如果没有邮件，完全不显示批量操作组件
+    if (allEmails.length === 0) {
+      return null;
+    }
+    
     return (
       <div className={`batch-operations ${className}`} style={style}>
         <div style={{

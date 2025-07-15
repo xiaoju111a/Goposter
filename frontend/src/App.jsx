@@ -3,7 +3,7 @@ import { api } from './utils/api.js';
 import { cacheManager } from './utils/cache.js';
 import { auth, authListener, logout } from './utils/auth.js';
 import MailboxCard from './components/MailboxCard.jsx';
-import Stats from './components/Stats.jsx';
+import EmailList from './components/EmailList.jsx';
 import SendEmail from './components/SendEmail.jsx';
 import CreateMailbox from './components/CreateMailbox.jsx';
 import Login from './components/Login.jsx';
@@ -14,6 +14,7 @@ import NotificationCenter from './components/NotificationCenter.jsx';
 // import EmailEditor from './components/EmailEditor.jsx';
 // import EmailTemplates from './components/EmailTemplates.jsx';
 import BatchOperations from './components/BatchOperations.jsx';
+import MailboxBatchOperations from './components/MailboxBatchOperations.jsx';
 import SwipeActions from './components/SwipeActions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
 import AttachmentViewer from './components/AttachmentViewer.jsx';
@@ -28,6 +29,7 @@ const App = () => {
     const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMailboxes, setSelectedMailboxes] = useState([]);
+    const [currentMailbox, setCurrentMailbox] = useState(null); // 当前查看的邮箱
     // 高级功能状态
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -138,6 +140,15 @@ const App = () => {
         setActiveTab('mailboxes');
     };
 
+
+    const handleMailboxClick = (mailbox) => {
+        setCurrentMailbox(mailbox);
+    };
+
+    const handleBackToMailboxes = () => {
+        setCurrentMailbox(null);
+    };
+
     const handleLoginSuccess = (loginData) => {
         // 认证状态会通过 authListener 自动更新
         // 这里可以添加登录成功后的其他逻辑
@@ -153,11 +164,6 @@ const App = () => {
         }
     };
 
-    // 计算邮件总数的占位符
-    const totalEmails = useMemo(() => {
-        // 这里可以通过API获取或累计计算
-        return mailboxes.length * 2; // 临时估算
-    }, [mailboxes]);
 
     // 如果未认证，显示登录页面
     if (!isAuthenticated) {
@@ -213,13 +219,6 @@ const App = () => {
                         <span className="nav-text">创建邮箱</span>
                     </button>
                     <button 
-                        className={`nav-item ${activeTab === 'stats' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('stats')}
-                    >
-                        <span className="nav-icon">📊</span>
-                        <span className="nav-text">统计面板</span>
-                    </button>
-                    <button 
                         className={`nav-item ${activeTab === 'security' ? 'active' : ''}`}
                         onClick={() => setActiveTab('security')}
                     >
@@ -249,7 +248,6 @@ const App = () => {
                         {activeTab === 'mailboxes' && '📮 邮箱管理'}
                         {activeTab === 'send' && '📤 发送邮件'}
                         {activeTab === 'create' && '➕ 创建邮箱'}
-                        {activeTab === 'stats' && '📊 统计面板'}
                         {activeTab === 'security' && '🔒 安全设置'}
                     </div>
                     <div className="header-actions">
@@ -288,123 +286,149 @@ const App = () => {
                 <div className="content-body">
                     {activeTab === 'mailboxes' && (
                         <>
-                            <Stats mailboxes={mailboxes} totalEmails={totalEmails} />
-                            
-                            {/* 高级筛选栏 */}
-                            <FilterBar
-                                searchQuery={searchQuery}
-                                onSearchChange={setSearchQuery}
-                                filterConfig={filterConfig}
-                                onFilterChange={setFilterConfig}
-                                totalCount={mailboxes.length}
-                                filteredCount={filteredMailboxes.length}
-                            />
-                            
-                            {/* 批量操作 */}
-                            {selectedMailboxes.length > 0 && (
-                                <BatchOperations
-                                    selectedItems={selectedMailboxes}
-                                    onClearSelection={() => setSelectedMailboxes([])}
-                                    onBatchDelete={(items) => {
-                                        // TODO: 实现批量删除API
-                                        console.log('批量删除:', items);
-                                        setSelectedMailboxes([]);
-                                        addNotification({
-                                            id: Date.now(),
-                                            type: 'success',
-                                            title: '批量删除完成',
-                                            message: `已删除 ${items.length} 个邮箱`,
-                                            timestamp: new Date()
-                                        });
-                                    }}
-                                    onBatchMove={(items, target) => {
-                                        // TODO: 实现批量移动API
-                                        console.log('批量移动:', items, 'to', target);
-                                    }}
+                            {currentMailbox ? (
+                                <EmailList 
+                                    mailbox={currentMailbox}
+                                    onBack={handleBackToMailboxes}
                                 />
-                            )}
-                            
-                            {/* 视图模式切换 */}
-                            <div className="view-controls">
-                                <button 
-                                    className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('grid')}
-                                    title="网格视图"
-                                >
-                                    <span>⊞</span>
-                                </button>
-                                <button 
-                                    className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('list')}
-                                    title="列表视图"
-                                >
-                                    <span>☰</span>
-                                </button>
-                            </div>
-                            
-                            {loading ? (
-                                <div className="loading-container">
-                                    <div className="loading-spinner"></div>
-                                    <div className="loading-text">正在加载邮箱数据...</div>
-                                </div>
                             ) : (
-                                <div className="mailbox-container">
-                                    <div className="section-header">
-                                        <h3>邮箱列表</h3>
-                                        <span className="mailbox-count">
-                                            {searchQuery ? 
-                                                `找到 ${filteredMailboxes.length} 个邮箱` :
-                                                `${mailboxes.length} 个邮箱`
-                                            }
-                                        </span>
-                                    </div>
+                                <>
+                                    {/* 高级筛选栏 */}
+                                    <FilterBar
+                                        searchQuery={searchQuery}
+                                        onSearchChange={setSearchQuery}
+                                        filterConfig={filterConfig}
+                                        onFilterChange={setFilterConfig}
+                                        totalCount={mailboxes.length}
+                                        filteredCount={filteredMailboxes.length}
+                                    />
                                     
-                                    {/* 简化的邮箱列表渲染 */}
-                                    <div className={`mailbox-list ${viewMode}`}>
-                                        {console.log('渲染状态:', { 
-                                            filteredMailboxes, 
-                                            length: filteredMailboxes.length,
-                                            loading,
-                                            mailboxes,
-                                            searchQuery 
-                                        })}
-                                        {filteredMailboxes.length === 0 ? (
-                                            <div className="empty-state">
-                                                <div className="empty-icon">📭</div>
-                                                <div className="empty-text">暂无邮箱</div>
-                                                <div className="empty-description">
-                                                    {searchQuery ? '没有找到匹配的邮箱' : '请先创建邮箱'}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            filteredMailboxes.map((mailbox, index) => {
-                                                console.log('渲染邮箱:', mailbox, typeof mailbox);
-                                                // 确保邮箱名称有效
-                                                if (!mailbox || typeof mailbox !== 'string') {
-                                                    console.log('跳过无效邮箱:', mailbox);
-                                                    return null;
+                                    {/* 批量操作 */}
+                                    {selectedMailboxes.length > 0 && (
+                                        <MailboxBatchOperations
+                                            selectedMailboxes={selectedMailboxes}
+                                            onClearSelection={() => setSelectedMailboxes([])}
+                                            onDelete={async (items) => {
+                                                // 检查是否包含默认管理员邮箱
+                                                if (items.includes('admin@freeagent.live')) {
+                                                    alert('默认管理员邮箱不能删除');
+                                                    return;
                                                 }
                                                 
-                                                return (
-                                                    <div key={`${mailbox}-${refreshKey}`} className="mailbox-item">
-                                                        <MailboxCard 
-                                                            mailbox={mailbox}
-                                                            selected={selectedMailboxes.includes(mailbox)}
-                                                            viewMode={viewMode}
-                                                            onSelect={(selected) => {
-                                                                if (selected) {
-                                                                    setSelectedMailboxes(prev => [...prev, mailbox]);
-                                                                } else {
-                                                                    setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
-                                                                }
-                                                            }}
-                                                        />
-                                                    </div>
-                                                );
-                                            })
-                                        )}
+                                                try {
+                                                    // 批量删除邮箱
+                                                    for (const mailbox of items) {
+                                                        await api.deleteMailbox(mailbox);
+                                                    }
+                                                    
+                                                    // 删除成功，更新状态
+                                                    setMailboxes(prev => prev.filter(mailbox => !items.includes(mailbox)));
+                                                    setSelectedMailboxes([]);
+                                                    
+                                                    // 如果当前正在查看被删除的邮箱，返回邮箱列表
+                                                    if (currentMailbox && items.includes(currentMailbox)) {
+                                                        setCurrentMailbox(null);
+                                                    }
+                                                    
+                                                    addNotification({
+                                                        id: Date.now(),
+                                                        type: 'success',
+                                                        title: '批量删除完成',
+                                                        message: `已删除 ${items.length} 个邮箱`,
+                                                        timestamp: new Date()
+                                                    });
+                                                } catch (err) {
+                                                    console.error('批量删除失败:', err);
+                                                    alert('批量删除失败: ' + err.message);
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                    
+                                    {/* 视图模式切换 */}
+                                    <div className="view-controls">
+                                        <button 
+                                            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                                            onClick={() => setViewMode('grid')}
+                                            title="网格视图"
+                                        >
+                                            <span>⊞</span>
+                                        </button>
+                                        <button 
+                                            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                                            onClick={() => setViewMode('list')}
+                                            title="列表视图"
+                                        >
+                                            <span>☰</span>
+                                        </button>
                                     </div>
-                                </div>
+                                    
+                                    {loading ? (
+                                        <div className="loading-container">
+                                            <div className="loading-spinner"></div>
+                                            <div className="loading-text">正在加载邮箱数据...</div>
+                                        </div>
+                                    ) : (
+                                        <div className="mailbox-container">
+                                            <div className="section-header">
+                                                <h3>邮箱列表</h3>
+                                                <span className="mailbox-count">
+                                                    {searchQuery ? 
+                                                        `找到 ${filteredMailboxes.length} 个邮箱` :
+                                                        `${mailboxes.length} 个邮箱`
+                                                    }
+                                                </span>
+                                            </div>
+                                            
+                                            {/* 简化的邮箱列表渲染 */}
+                                            <div className={`mailbox-list ${viewMode}`}>
+                                                {console.log('渲染状态:', { 
+                                                    filteredMailboxes, 
+                                                    length: filteredMailboxes.length,
+                                                    loading,
+                                                    mailboxes,
+                                                    searchQuery 
+                                                })}
+                                                {filteredMailboxes.length === 0 ? (
+                                                    <div className="empty-state">
+                                                        <div className="empty-icon">📭</div>
+                                                        <div className="empty-text">暂无邮箱</div>
+                                                        <div className="empty-description">
+                                                            {searchQuery ? '没有找到匹配的邮箱' : '请先创建邮箱'}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    filteredMailboxes.map((mailbox, index) => {
+                                                        console.log('渲染邮箱:', mailbox, typeof mailbox);
+                                                        // 确保邮箱名称有效
+                                                        if (!mailbox || typeof mailbox !== 'string') {
+                                                            console.log('跳过无效邮箱:', mailbox);
+                                                            return null;
+                                                        }
+                                                        
+                                                        return (
+                                                            <div key={`${mailbox}-${refreshKey}`} className="mailbox-item">
+                                                                <MailboxCard 
+                                                                    mailbox={mailbox}
+                                                                    selected={selectedMailboxes.includes(mailbox)}
+                                                                    viewMode={viewMode}
+                                                                    onSelect={mailbox === 'admin@freeagent.live' ? undefined : (selected) => {
+                                                                        if (selected) {
+                                                                            setSelectedMailboxes(prev => [...prev, mailbox]);
+                                                                        } else {
+                                                                            setSelectedMailboxes(prev => prev.filter(m => m !== mailbox));
+                                                                        }
+                                                                    }}
+                                                                    onMailboxClick={handleMailboxClick}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </>
                     )}
@@ -420,50 +444,6 @@ const App = () => {
                         <CreateMailbox onMailboxCreated={handleMailboxCreated} />
                     )}
 
-                    {activeTab === 'stats' && (
-                        <div className="stats-dashboard">
-                            <div className="stats-overview">
-                                <Stats mailboxes={mailboxes} totalEmails={totalEmails} />
-                            </div>
-                            
-                            <div className="stats-charts">
-                                <div className="chart-container">
-                                    <h3>邮箱活跃度</h3>
-                                    <div className="chart-placeholder">
-                                        📊 图表功能开发中...
-                                    </div>
-                                </div>
-                                
-                                <div className="chart-container">
-                                    <h3>邮件流量趋势</h3>
-                                    <div className="chart-placeholder">
-                                        📈 图表功能开发中...
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="recent-activity">
-                                <h3>最近活动</h3>
-                                <div className="activity-list">
-                                    <div className="activity-item">
-                                        <span className="activity-icon">📧</span>
-                                        <span className="activity-text">新邮件接收</span>
-                                        <span className="activity-time">刚刚</span>
-                                    </div>
-                                    <div className="activity-item">
-                                        <span className="activity-icon">📤</span>
-                                        <span className="activity-text">邮件发送成功</span>
-                                        <span className="activity-time">5分钟前</span>
-                                    </div>
-                                    <div className="activity-item">
-                                        <span className="activity-icon">➕</span>
-                                        <span className="activity-text">创建新邮箱</span>
-                                        <span className="activity-time">10分钟前</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {activeTab === 'security' && (
                         <SecuritySettings />

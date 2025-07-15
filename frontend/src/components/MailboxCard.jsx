@@ -3,11 +3,10 @@ import { api } from '../utils/api.js';
 import { cacheManager } from '../utils/cache.js';
 import EmailItem from './EmailItem.jsx';
 
-const MailboxCard = ({ mailbox, selected = false, onSelect, viewMode = 'grid' }) => {
+const MailboxCard = ({ mailbox, selected = false, onSelect, viewMode = 'grid', onMailboxClick }) => {
     const [emails, setEmails] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [expandedEmailId, setExpandedEmailId] = useState(null);
 
     const loadEmails = useCallback(async () => {
         if (!mailbox) {
@@ -33,24 +32,12 @@ const MailboxCard = ({ mailbox, selected = false, onSelect, viewMode = 'grid' })
         loadEmails();
     }, [loadEmails]);
 
-    const handleEmailToggle = (emailId) => {
-        setExpandedEmailId(prev => prev === emailId ? null : emailId);
-    };
-
-    const handleDeleteEmail = async (emailId) => {
-        try {
-            await api.deleteEmail(mailbox, emailId);
-            // 删除成功，从本地状态中移除邮件
-            setEmails(prev => prev.filter(email => email.ID !== emailId));
-            // 如果删除的是展开的邮件，关闭展开状态
-            if (expandedEmailId === emailId) {
-                setExpandedEmailId(null);
-            }
-        } catch (err) {
-            console.error('删除邮件失败:', err);
-            alert('删除失败: ' + err.message);
+    const handleMailboxClick = () => {
+        if (onMailboxClick) {
+            onMailboxClick(mailbox);
         }
     };
+
 
     return (
         <div className={`mailbox-card ${selected ? 'selected' : ''} ${viewMode}`}>
@@ -61,26 +48,25 @@ const MailboxCard = ({ mailbox, selected = false, onSelect, viewMode = 'grid' })
                         checked={selected}
                         onChange={(e) => onSelect(e.target.checked)}
                         className="mailbox-checkbox"
+                        onClick={(e) => e.stopPropagation()}
                     />
                 )}
-                <div className="mailbox-name">{mailbox}</div>
-                <div className="email-count">{emails.length}</div>
+                <div className="mailbox-name" onClick={handleMailboxClick}>
+                    {mailbox}
+                </div>
+                <div className="email-count-badge">{loading ? '...' : emails.length}</div>
             </div>
-            <div className="email-list">
-                {loading && <div className="loading">正在加载邮件...</div>}
+            <div className="mailbox-preview">
+                {loading && <div className="loading">正在加载...</div>}
                 {error && <div className="error">{error}</div>}
                 {!loading && !error && emails.length === 0 && (
-                    <div className="loading">暂无邮件</div>
+                    <div className="empty-preview">暂无邮件</div>
                 )}
-                {!loading && !error && emails.map((email, index) => (
-                    <EmailItem
-                        key={email.ID || index}
-                        email={email}
-                        expanded={expandedEmailId === (email.ID || index)}
-                        onToggle={() => handleEmailToggle(email.ID || index)}
-                        onDelete={handleDeleteEmail}
-                    />
-                ))}
+                {!loading && !error && emails.length > 0 && (
+                    <div className="email-preview">
+                        最近邮件: {emails[0]?.Subject || '(无主题)'}
+                    </div>
+                )}
             </div>
         </div>
     );

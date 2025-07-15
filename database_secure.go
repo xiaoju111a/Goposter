@@ -129,10 +129,10 @@ func (sdb *SecureDatabase) initTables() error {
 			encrypted_data TEXT NOT NULL,
 			salt TEXT NOT NULL,
 			nonce TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			INDEX(mailbox),
-			INDEX(created_at)
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE INDEX IF NOT EXISTS idx_encrypted_emails_mailbox ON encrypted_emails(mailbox)`,
+		`CREATE INDEX IF NOT EXISTS idx_encrypted_emails_created_at ON encrypted_emails(created_at)`,
 		`CREATE TABLE IF NOT EXISTS audit_logs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_email TEXT NOT NULL,
@@ -142,11 +142,11 @@ func (sdb *SecureDatabase) initTables() error {
 			user_agent TEXT,
 			success BOOLEAN NOT NULL,
 			details TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			INDEX(user_email),
-			INDEX(action),
-			INDEX(created_at)
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_email ON audit_logs(user_email)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`,
 		`CREATE TABLE IF NOT EXISTS cache_metadata (
 			key TEXT PRIMARY KEY,
 			expiry INTEGER NOT NULL,

@@ -74,13 +74,33 @@ npm run dev -- --port 8080 --host 0.0.0.0
 ### 生产环境部署
 
 ```bash
-# 使用真实域名和标准端口 (需要sudo权限)
-sudo go run backend/*/*.go freeagent.live mail.freeagent.live 25 143 443
+# 1. 启动Redis缓存服务 (必需)
+sudo systemctl start redis
+sudo systemctl enable redis
 
-# 后台运行服务器
-nohup go run backend/*/*.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
+# 2. 编译邮件服务器
+go build -o mailserver .
+
+# 3. 启动生产环境服务器 (需要sudo权限)
+sudo ./mailserver freeagent.live mail.freeagent.live 25 143 443
+
+# 4. 后台运行服务器 (推荐)
+nohup sudo ./mailserver freeagent.live localhost 25 143 9090 > server.log 2>&1 &
 
 # 参数说明: 域名 主机名 SMTP端口 IMAP端口 Web端口
+```
+
+#### 🔧 服务状态检查
+
+```bash
+# 检查服务端口
+netstat -tulpn | grep -E ":(25|143|9090|6379)\s"
+
+# 查看服务日志
+tail -f server.log
+
+# 检查Redis状态
+systemctl status redis
 ```
 
 ### 前端生产构建
@@ -369,11 +389,15 @@ cd frontend && npm run dev
 
 ### 生产模式
 ```bash
-# 生产环境 (标准端口)
-sudo go run backend/*/*.go freeagent.live mail.freeagent.live 25 143 443
+# 1. 启动Redis缓存服务
+sudo systemctl start redis
 
-# 后台运行
-nohup go run backend/*/*.go freeagent.live localhost 25 143 9090 > server.log 2>&1 &
+# 2. 编译并启动生产环境 (标准端口)
+go build -o mailserver .
+sudo ./mailserver freeagent.live mail.freeagent.live 25 143 443
+
+# 3. 后台运行 (推荐)
+nohup sudo ./mailserver freeagent.live localhost 25 143 9090 > server.log 2>&1 &
 ```
 
 ## 🔒 安全特性
@@ -433,7 +457,7 @@ nohup go run backend/*/*.go freeagent.live localhost 25 143 9090 > server.log 2>
 
 ### 🔄 计划扩展
 - **ElasticSearch搜索** - 全文搜索引擎 (临时禁用)
-- **Redis缓存** - 高性能缓存支持 (待部署)
+- **Redis缓存** - ✅ 高性能缓存支持 (已部署)
 - **TLS/SSL增强** - 完整HTTPS部署
 - **邮件转发功能** - 自动转发规则
 - **垃圾邮件过滤** - AI智能过滤系统
@@ -491,7 +515,7 @@ admin@freeagent.live
 5. ✅ **TLS安全通信** - SMTP/IMAP加密 + 证书管理
 
 ### 🟡 进行中 (当前版本)
-1. **Redis缓存部署** - 高性能缓存支持
+1. **Redis缓存部署** - ✅ 高性能缓存支持 (已完成)
 2. **HTTPS完整部署** - Web界面SSL证书
 3. **ElasticSearch集成** - 全文搜索引擎
 
@@ -603,6 +627,8 @@ MIT License - 详见 LICENSE 文件
 - ✅ **ID保持机制** - 邮件ID在存储过程中保持不变
 - ✅ **UI界面升级** - 实时搜索、批量操作、统计面板
 - ✅ **移动端优化** - 响应式设计、手势操作
+- ✅ **数据库修复** - 修复SQLite INDEX语法错误
+- ✅ **Redis缓存** - 启动Redis服务，提升性能
 
 **📁 完整测试系统**:
 - ✅ **多语言测试工具**: Node.js + Go + Python

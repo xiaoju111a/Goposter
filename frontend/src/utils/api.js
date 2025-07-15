@@ -173,6 +173,22 @@ export const api = {
             const errorText = await response.text();
             throw new Error(errorText || '创建邮箱失败');
         }
+    },
+
+    async deleteMailbox(email) {
+        const response = await authenticatedFetch(`/api/mailboxes/manage?email=${encodeURIComponent(email)}`, {
+            method: 'DELETE',
+        });
+
+        if (response.ok) {
+            // 删除成功，清除相关缓存
+            cacheManager.clear('mailboxes');
+            cacheManager.clear(`emails-${email}`);
+            return true;
+        } else {
+            const errorText = await response.text();
+            throw new Error(errorText || '删除邮箱失败');
+        }
     }
 };
 
