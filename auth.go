@@ -28,16 +28,17 @@ type UserAuth struct {
 }
 
 type User struct {
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	Salt         string    `json:"salt"`
-	IsAdmin      bool      `json:"is_admin"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastLogin    time.Time `json:"last_login"`
-	TwoFactorEnabled bool `json:"two_factor_enabled"`
-	TwoFactorSecret  string `json:"two_factor_secret"`
-	FailedAttempts   int    `json:"failed_attempts"`
+	Email           string    `json:"email"`
+	PasswordHash    string    `json:"password_hash"`
+	Salt            string    `json:"salt"`
+	IsAdmin         bool      `json:"is_admin"`
+	CreatedAt       time.Time `json:"created_at"`
+	LastLogin       time.Time `json:"last_login"`
+	TwoFactorEnabled bool     `json:"two_factor_enabled"`
+	TwoFactorSecret  string    `json:"two_factor_secret"`
+	FailedAttempts   int       `json:"failed_attempts"`
 	LockedUntil      time.Time `json:"locked_until"`
+	AssignedMailboxes []string `json:"assigned_mailboxes"` // 分配的邮箱列表
 }
 
 type Session struct {
@@ -214,17 +215,26 @@ func (ua *UserAuth) GetUser(email string) (*User, bool) {
 }
 
 // GetAllUsers 获取所有用户（仅管理员）
-func (ua *UserAuth) GetAllUsers() []*User {
+func (ua *UserAuth) GetAllUsers() []User {
 	ua.usersMu.RLock()
 	defer ua.usersMu.RUnlock()
 	
-	users := make([]*User, 0, len(ua.users))
+	users := make([]User, 0, len(ua.users))
 	for _, user := range ua.users {
 		userCopy := *user
-		users = append(users, &userCopy)
+		users = append(users, userCopy)
 	}
 	
 	return users
+}
+
+// ValidateJWT 验证JWT token并返回用户邮箱
+func (ua *UserAuth) ValidateJWT(token string) (string, error) {
+	claims, err := ua.ValidateJWTToken(token)
+	if err != nil {
+		return "", err
+	}
+	return claims.Email, nil
 }
 
 // DeleteUser 删除用户

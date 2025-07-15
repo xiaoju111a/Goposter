@@ -17,6 +17,21 @@ import (
 	"unicode/utf8"
 )
 
+
+// Mailbox 邮箱结构
+type Mailbox struct {
+	Username        string    `json:"username"`
+	Email           string    `json:"email"`
+	Password        string    `json:"password"`
+	CreatedAt       string    `json:"created_at"`
+	Description     string    `json:"description"`
+	IsActive        bool      `json:"is_active"`
+	Owner           string    `json:"owner"`           // 邮箱所有者
+	ForwardTo       string    `json:"forward_to"`      // 转发邮箱
+	ForwardEnabled  bool      `json:"forward_enabled"` // 转发开关
+	KeepOriginal    bool      `json:"keep_original"`   // 是否保留原邮件
+}
+
 // AttachmentInfo 附件信息
 type AttachmentInfo struct {
 	Filename    string `json:"filename"`
@@ -237,7 +252,20 @@ func (ms *MailServer) HandleSMTP(conn net.Conn) {
 					Embedded:    extractEmbeddedContent(emailContent),
 				}
 				
-				ms.AddEmail(to, email)
+				// 检查是否需要保留原邮件
+				mailboxInfo := ms.mailboxManager.GetMailbox(to)
+				keepOriginal := true
+				if mailboxInfo != nil && mailboxInfo.ForwardEnabled {
+					keepOriginal = mailboxInfo.KeepOriginal
+				}
+				
+				// 只有在需要保留原邮件时才存储
+				if keepOriginal {
+					ms.AddEmail(to, email)
+				}
+				
+				// 处理邮件转发
+				go ms.processEmailForwarding(to, rawContent)
 				
 				writer.WriteString("250 OK: Message accepted\r\n")
 				writer.Flush()
@@ -342,6 +370,23 @@ func (ms *MailServer) StartWebServer(port string) {
 	// 附件处理API
 	http.HandleFunc("/api/attachments/", ms.apiAttachments)
 	http.HandleFunc("/api/attachments/inline/", ms.apiInlineAttachments)
+	
+	// 用户管理API
+	http.HandleFunc("/api/admin/users", ms.apiAdminUsers)
+	http.HandleFunc("/api/admin/users/create", ms.apiAdminCreateUser)
+	http.HandleFunc("/api/admin/users/delete", ms.apiAdminDeleteUser)
+	http.HandleFunc("/api/admin/mailboxes", ms.apiAdminMailboxes)
+	http.HandleFunc("/api/admin/mailboxes/create", ms.apiAdminCreateMailbox)
+	http.HandleFunc("/api/admin/mailboxes/delete", ms.apiAdminDeleteMailbox)
+	http.HandleFunc("/api/admin/mailboxes/assign", ms.apiAdminAssignMailbox)
+	
+	// 邮件转发API
+	http.HandleFunc("/api/forwarding/settings", ms.apiForwardingSettings)
+	http.HandleFunc("/api/forwarding/update", ms.apiForwardingUpdate)
+	
+	// 用户邮箱访问API
+	http.HandleFunc("/api/user/mailboxes", ms.apiUserMailboxes)
+	http.HandleFunc("/api/user/emails/", ms.apiUserEmails)
 	
 	log.Printf("Web server listening on 0.0.0.0:%s (accepting external connections)", port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
@@ -3477,4 +3522,549 @@ func (ms *MailServer) apiInlineAttachments(w http.ResponseWriter, r *http.Reques
 	
 	// 输出图片内容
 	w.Write(targetAttachment.Content)
+}
+
+// apiAdminUsers 管理员用户管理API
+func (ms *MailServer) apiAdminUsers(w http.ResponseWriter, r *http.Request) {
+	// 验证管理员权限
+	if !ms.isAdminRequest(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 获取所有用户
+	users := ms.getAllUsers()
+	
+	// 过滤敏感信息
+	var publicUsers []map[string]interface{}
+	for _, user := range users {
+		publicUser := map[string]interface{}{
+			"email":              user.Email,
+			"is_admin":           user.IsAdmin,
+			"created_at":         user.CreatedAt,
+			"last_login":         user.LastLogin,
+			"two_factor_enabled": user.TwoFactorEnabled,
+			"assigned_mailboxes": user.AssignedMailboxes,
+		}
+		publicUsers = append(publicUsers, publicUser)
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"users": publicUsers,
+	})
+}
+
+// apiAdminCreateUser 创建用户API
+func (ms *MailServer) apiAdminCreateUser(w http.ResponseWriter, r *http.Request) {
+	if !ms.isAdminRequest(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		IsAdmin  bool   `json:"is_admin"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	// 验证输入
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+	
+	// 创建用户
+	if err := ms.createUser(req.Email, req.Password, req.IsAdmin); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User created successfully",
+	})
+}
+
+// apiAdminMailboxes 管理员邮箱管理API
+func (ms *MailServer) apiAdminMailboxes(w http.ResponseWriter, r *http.Request) {
+	if !ms.isAdminRequest(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 获取所有邮箱
+	mailboxes := ms.getAllMailboxes()
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"mailboxes": mailboxes,
+	})
+}
+
+// apiAdminCreateMailbox 创建邮箱API
+func (ms *MailServer) apiAdminCreateMailbox(w http.ResponseWriter, r *http.Request) {
+	if !ms.isAdminRequest(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var req struct {
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		Description string `json:"description"`
+		Owner       string `json:"owner"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	// 验证输入
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+	
+	// 创建邮箱
+	if err := ms.createMailbox(req.Email, req.Password, req.Description, req.Owner); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Mailbox created successfully",
+	})
+}
+
+// apiForwardingSettings 获取转发设置API
+func (ms *MailServer) apiForwardingSettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 获取当前用户邮箱
+	userEmail := r.URL.Query().Get("mailbox")
+	if userEmail == "" {
+		http.Error(w, "Mailbox parameter required", http.StatusBadRequest)
+		return
+	}
+	
+	// 验证用户权限
+	if !ms.hasMailboxAccess(r, userEmail) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	// 获取转发设置
+	settings := ms.getForwardingSettings(userEmail)
+	
+	json.NewEncoder(w).Encode(settings)
+}
+
+// apiForwardingUpdate 更新转发设置API
+func (ms *MailServer) apiForwardingUpdate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var req struct {
+		Mailbox        string `json:"mailbox"`
+		ForwardTo      string `json:"forward_to"`
+		ForwardEnabled bool   `json:"forward_enabled"`
+		KeepOriginal   bool   `json:"keep_original"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	// 验证用户权限
+	if !ms.hasMailboxAccess(r, req.Mailbox) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	// 更新转发设置
+	if err := ms.updateForwardingSettings(req.Mailbox, req.ForwardTo, req.ForwardEnabled, req.KeepOriginal); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Forwarding settings updated successfully",
+	})
+}
+
+// apiUserMailboxes 用户邮箱列表API
+func (ms *MailServer) apiUserMailboxes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 获取用户的邮箱列表
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	mailboxes := ms.getUserMailboxes(userEmail)
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"mailboxes": mailboxes,
+	})
+}
+
+// apiUserEmails 用户邮件API（权限受限）
+func (ms *MailServer) apiUserEmails(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	
+	mailbox := strings.TrimPrefix(r.URL.Path, "/api/user/emails/")
+	
+	// 验证用户权限
+	if !ms.hasMailboxAccess(r, mailbox) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	// 获取邮件（复用现有逻辑）
+	emails := ms.GetEmails(mailbox)
+	
+	var apiEmails []map[string]interface{}
+	for _, email := range emails {
+		decodedBody := decodeEmailBodyIfNeeded(email.Body)
+		decodedSubject := decodeEmailBodyIfNeeded(email.Subject)
+		
+		apiEmail := map[string]interface{}{
+			"From":        email.From,
+			"To":          email.To,
+			"Subject":     decodedSubject,
+			"Body":        decodedBody,
+			"HTMLBody":    email.HTMLBody,
+			"Date":        email.Date,
+			"ID":          email.ID,
+			"Attachments": email.Attachments,
+			"Signature":   email.Signature,
+			"IsAutoReply": email.IsAutoReply,
+			"Charset":     email.Charset,
+			"Headers":     email.Headers,
+			"Embedded":    email.Embedded,
+		}
+		
+		apiEmails = append(apiEmails, apiEmail)
+	}
+	
+	jsonData, err := json.Marshal(apiEmails)
+	if err != nil {
+		http.Error(w, "JSON编码失败", http.StatusInternalServerError)
+		return
+	}
+	
+	w.Write(jsonData)
+}
+
+// 权限验证和用户管理辅助函数
+
+// isAdminRequest 验证请求是否来自管理员
+func (ms *MailServer) isAdminRequest(r *http.Request) bool {
+	// 获取JWT token
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		return false
+	}
+	
+	// 去除Bearer前缀
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+	
+	// 验证JWT token并获取用户信息
+	userEmail, err := ms.userAuth.ValidateJWT(token)
+	if err != nil {
+		return false
+	}
+	
+	// 检查用户是否是管理员
+	user, exists := ms.userAuth.GetUser(userEmail)
+	if !exists {
+		return false
+	}
+	
+	return user.IsAdmin
+}
+
+// hasMailboxAccess 验证用户是否有邮箱访问权限
+func (ms *MailServer) hasMailboxAccess(r *http.Request, mailbox string) bool {
+	// 获取用户邮箱
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
+		return false
+	}
+	
+	// 管理员可以访问所有邮箱
+	if ms.isAdminRequest(r) {
+		return true
+	}
+	
+	// 检查用户是否有该邮箱的访问权限
+	user, exists := ms.userAuth.GetUser(userEmail)
+	if !exists {
+		return false
+	}
+	
+	// 检查邮箱是否分配给该用户
+	for _, assignedMailbox := range user.AssignedMailboxes {
+		if assignedMailbox == mailbox {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// getUserFromRequest 从请求中获取用户邮箱
+func (ms *MailServer) getUserFromRequest(r *http.Request) string {
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		return ""
+	}
+	
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+	
+	userEmail, err := ms.userAuth.ValidateJWT(token)
+	if err != nil {
+		return ""
+	}
+	
+	return userEmail
+}
+
+// getAllUsers 获取所有用户
+func (ms *MailServer) getAllUsers() []User {
+	return ms.userAuth.GetAllUsers()
+}
+
+// createUser 创建新用户
+func (ms *MailServer) createUser(email, password string, isAdmin bool) error {
+	return ms.userAuth.CreateUser(email, password, isAdmin)
+}
+
+// getAllMailboxes 获取所有邮箱
+func (ms *MailServer) getAllMailboxes() []Mailbox {
+	return ms.mailboxManager.GetAllMailboxes()
+}
+
+// createMailbox 创建新邮箱
+func (ms *MailServer) createMailbox(email, password, description, owner string) error {
+	return ms.mailboxManager.CreateMailbox(email, password, description, owner)
+}
+
+// getUserMailboxes 获取用户的邮箱列表
+func (ms *MailServer) getUserMailboxes(userEmail string) []Mailbox {
+	user, exists := ms.userAuth.GetUser(userEmail)
+	if !exists {
+		return []Mailbox{}
+	}
+	
+	// 管理员可以看到所有邮箱
+	if user.IsAdmin {
+		return ms.getAllMailboxes()
+	}
+	
+	// 普通用户只能看到分配给他的邮箱
+	var userMailboxes []Mailbox
+	allMailboxes := ms.getAllMailboxes()
+	
+	for _, mailbox := range allMailboxes {
+		for _, assignedMailbox := range user.AssignedMailboxes {
+			if mailbox.Email == assignedMailbox {
+				userMailboxes = append(userMailboxes, mailbox)
+				break
+			}
+		}
+	}
+	
+	return userMailboxes
+}
+
+// getForwardingSettings 获取转发设置
+func (ms *MailServer) getForwardingSettings(mailbox string) map[string]interface{} {
+	mailboxInfo := ms.mailboxManager.GetMailbox(mailbox)
+	if mailboxInfo == nil {
+		return map[string]interface{}{
+			"forward_enabled": false,
+			"forward_to":      "",
+			"keep_original":   true,
+		}
+	}
+	
+	return map[string]interface{}{
+		"forward_enabled": mailboxInfo.ForwardEnabled,
+		"forward_to":      mailboxInfo.ForwardTo,
+		"keep_original":   mailboxInfo.KeepOriginal,
+	}
+}
+
+// updateForwardingSettings 更新转发设置
+func (ms *MailServer) updateForwardingSettings(mailbox, forwardTo string, forwardEnabled, keepOriginal bool) error {
+	return ms.mailboxManager.UpdateForwardingSettings(mailbox, forwardTo, forwardEnabled, keepOriginal)
+}
+
+// processEmailForwarding 处理邮件转发
+func (ms *MailServer) processEmailForwarding(recipientEmail, rawContent string) {
+	// 获取收件人邮箱设置
+	mailboxInfo := ms.mailboxManager.GetMailbox(recipientEmail)
+	if mailboxInfo == nil || !mailboxInfo.ForwardEnabled || mailboxInfo.ForwardTo == "" {
+		return
+	}
+	
+	// 解析邮件内容
+	emailContent := ParseEmailContentEnhanced(rawContent)
+	if emailContent == nil {
+		return
+	}
+	
+	// 构建转发邮件
+	forwardedContent := ms.buildForwardedEmail(emailContent, recipientEmail, mailboxInfo.ForwardTo)
+	
+	// 发送转发邮件
+	err := ms.smtpSender.SendEmail(recipientEmail, mailboxInfo.ForwardTo, forwardedContent)
+	if err != nil {
+		log.Printf("Failed to forward email from %s to %s: %v", recipientEmail, mailboxInfo.ForwardTo, err)
+	} else {
+		log.Printf("Email forwarded from %s to %s", recipientEmail, mailboxInfo.ForwardTo)
+	}
+}
+
+// buildForwardedEmail 构建转发邮件内容
+func (ms *MailServer) buildForwardedEmail(original *EmailContent, originalRecipient, forwardTo string) string {
+	subject := fmt.Sprintf("Fwd: %s", original.Subject)
+	
+	var body strings.Builder
+	body.WriteString(fmt.Sprintf("---------- Forwarded message ----------\n"))
+	body.WriteString(fmt.Sprintf("From: %s\n", original.From))
+	body.WriteString(fmt.Sprintf("Date: %s\n", original.Date))
+	body.WriteString(fmt.Sprintf("Subject: %s\n", original.Subject))
+	body.WriteString(fmt.Sprintf("To: %s\n", originalRecipient))
+	if len(original.CC) > 0 {
+		body.WriteString(fmt.Sprintf("CC: %s\n", strings.Join(original.CC, ", ")))
+	}
+	body.WriteString("\n")
+	body.WriteString(original.Body)
+	
+	// 构建完整的邮件格式
+	var email strings.Builder
+	email.WriteString(fmt.Sprintf("From: %s\n", originalRecipient))
+	email.WriteString(fmt.Sprintf("To: %s\n", forwardTo))
+	email.WriteString(fmt.Sprintf("Subject: %s\n", subject))
+	email.WriteString(fmt.Sprintf("Date: %s\n", time.Now().Format(time.RFC1123Z)))
+	email.WriteString("Content-Type: text/plain; charset=utf-8\n")
+	email.WriteString("\n")
+	email.WriteString(body.String())
+	
+	return email.String()
 }

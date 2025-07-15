@@ -17,12 +17,16 @@ type MailboxManager struct {
 }
 
 type Mailbox struct {
-	Username    string `json:"username"`
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	CreatedAt   string `json:"created_at"`
-	Description string `json:"description"`
-	IsActive    bool   `json:"is_active"`
+	Username        string `json:"username"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	CreatedAt       string `json:"created_at"`
+	Description     string `json:"description"`
+	IsActive        bool   `json:"is_active"`
+	Owner           string `json:"owner"`           // 邮箱所有者
+	ForwardTo       string `json:"forward_to"`      // 转发邮箱
+	ForwardEnabled  bool   `json:"forward_enabled"` // 转发开关
+	KeepOriginal    bool   `json:"keep_original"`   // 是否保留原邮件
 }
 
 type MailboxConfig struct {
@@ -41,16 +45,17 @@ func NewMailboxManager(domain, filename string) *MailboxManager {
 }
 
 // CreateMailbox 创建新邮箱
-func (mm *MailboxManager) CreateMailbox(username, password, description string) error {
+func (mm *MailboxManager) CreateMailbox(email, password, description, owner string) error {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 
+	// 从email中提取用户名
+	username := strings.Split(email, "@")[0]
+	
 	// 验证用户名格式
 	if !mm.isValidUsername(username) {
 		return fmt.Errorf("无效的用户名：只能包含字母、数字、点号和下划线")
 	}
-
-	email := username + "@" + mm.domain
 
 	// 检查是否已存在
 	if _, exists := mm.mailboxes[email]; exists {
@@ -59,12 +64,16 @@ func (mm *MailboxManager) CreateMailbox(username, password, description string) 
 
 	// 创建邮箱
 	mailbox := &Mailbox{
-		Username:    username,
-		Email:       email,
-		Password:    password,
-		CreatedAt:   getCurrentTime(),
-		Description: description,
-		IsActive:    true,
+		Username:        username,
+		Email:           email,
+		Password:        password,
+		CreatedAt:       getCurrentTime(),
+		Description:     description,
+		IsActive:        true,
+		Owner:           owner,
+		ForwardTo:       "",
+		ForwardEnabled:  false,
+		KeepOriginal:    true,
 	}
 
 	mm.mailboxes[email] = mailbox
@@ -270,4 +279,48 @@ func (mm *MailboxManager) saveToFile() error {
 
 func getCurrentTime() string {
 	return fmt.Sprintf("%d", 1752322350) // 简化的时间戳
+}
+
+// GetAllMailboxes 获取所有邮箱
+func (mm *MailboxManager) GetAllMailboxes() []Mailbox {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+	
+	mailboxes := make([]Mailbox, 0, len(mm.mailboxes))
+	for _, mailbox := range mm.mailboxes {
+		mailboxCopy := *mailbox
+		mailboxes = append(mailboxes, mailboxCopy)
+	}
+	
+	return mailboxes
+}
+
+// GetMailbox 获取指定邮箱
+func (mm *MailboxManager) GetMailbox(email string) *Mailbox {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+	
+	if mailbox, exists := mm.mailboxes[email]; exists {
+		mailboxCopy := *mailbox
+		return &mailboxCopy
+	}
+	
+	return nil
+}
+
+// UpdateForwardingSettings 更新转发设置
+func (mm *MailboxManager) UpdateForwardingSettings(email, forwardTo string, forwardEnabled, keepOriginal bool) error {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+	
+	mailbox, exists := mm.mailboxes[email]
+	if !exists {
+		return fmt.Errorf("邮箱 %s 不存在", email)
+	}
+	
+	mailbox.ForwardTo = forwardTo
+	mailbox.ForwardEnabled = forwardEnabled
+	mailbox.KeepOriginal = keepOriginal
+	
+	return mm.saveToFile()
 }

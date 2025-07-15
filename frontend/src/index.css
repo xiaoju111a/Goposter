@@ -2726,6 +2726,218 @@ body {
     gap: 16px;
 }
 
+/* 管理员面板样式 */
+.admin-panel {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.admin-panel h2 {
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+}
+
+.tab-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tab-nav button {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.tab-nav button.active {
+    color: var(--primary-blue);
+    border-bottom-color: var(--primary-blue);
+}
+
+.tab-nav button:hover {
+    color: var(--primary-blue);
+}
+
+.create-user-form, .create-mailbox-form {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.create-user-form h4, .create-mailbox-form h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.create-user-form input, .create-mailbox-form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.create-user-form label, .create-mailbox-form label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.create-user-form button, .create-mailbox-form button {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.create-user-form button:hover, .create-mailbox-form button:hover {
+    background: var(--primary-blue-dark);
+}
+
+.users-list, .mailboxes-list {
+    background: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.users-list table, .mailboxes-list table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.users-list th, .mailboxes-list th,
+.users-list td, .mailboxes-list td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.users-list th, .mailboxes-list th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.users-list td, .mailboxes-list td {
+    color: var(--text-secondary);
+}
+
+/* 转发设置样式 */
+.forwarding-settings {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.forwarding-settings h3 {
+    color: var(--primary-blue);
+    margin-bottom: 15px;
+}
+
+.setting-item {
+    margin-bottom: 20px;
+}
+
+.setting-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.setting-item input[type="email"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.setting-item input[type="email"].invalid {
+    border-color: var(--error);
+}
+
+.setting-item .error {
+    color: var(--error);
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.setting-item small {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-left: 24px;
+}
+
+.setting-actions {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.save-btn {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.save-btn:hover:not(:disabled) {
+    background: var(--primary-blue-dark);
+}
+
+.save-btn:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+.warning strong {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.warning ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.warning li {
+    margin-bottom: 5px;
+}
+
 .embedded-links,
 .embedded-images {
     padding: 12px;
