@@ -10,7 +10,6 @@ import Login from './components/Login.jsx';
 // 高级功能组件
 import VirtualList from './components/VirtualList.jsx';
 import FilterBar from './components/FilterBar.jsx';
-import NotificationCenter from './components/NotificationCenter.jsx';
 // import EmailEditor from './components/EmailEditor.jsx';
 // import EmailTemplates from './components/EmailTemplates.jsx';
 import BatchOperations from './components/BatchOperations.jsx';
@@ -31,8 +30,6 @@ const App = () => {
     const [selectedMailboxes, setSelectedMailboxes] = useState([]);
     const [currentMailbox, setCurrentMailbox] = useState(null); // 当前查看的邮箱
     // 高级功能状态
-    const [notifications, setNotifications] = useState([]);
-    const [showNotifications, setShowNotifications] = useState(false);
     const [filterConfig, setFilterConfig] = useState({});
     const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -89,28 +86,8 @@ const App = () => {
         setRefreshKey(prev => prev + 1);
         await loadMailboxes();
         setIsRefreshing(false);
-        // 添加通知
-        addNotification({
-            id: Date.now(),
-            type: 'success',
-            title: '刷新成功',
-            message: '邮箱数据已更新',
-            timestamp: new Date()
-        });
     };
 
-    // 通知管理
-    const addNotification = useCallback((notification) => {
-        setNotifications(prev => [notification, ...prev.slice(0, 49)]); // 最多50条
-    }, []);
-
-    const removeNotification = useCallback((id) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-    }, []);
-
-    const clearAllNotifications = useCallback(() => {
-        setNotifications([]);
-    }, []);
 
     // 筛选邮箱
     const filteredMailboxes = useMemo(() => {
@@ -252,16 +229,6 @@ const App = () => {
                     </div>
                     <div className="header-actions">
                         <button 
-                            onClick={() => setShowNotifications(!showNotifications)}
-                            className="notification-btn" 
-                            title="通知中心"
-                        >
-                            <span className="notification-icon">🔔</span>
-                            {notifications.length > 0 && (
-                                <span className="notification-badge">{notifications.length}</span>
-                            )}
-                        </button>
-                        <button 
                             onClick={handleRefresh} 
                             className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`} 
                             title="刷新数据"
@@ -273,15 +240,6 @@ const App = () => {
                     </div>
                 </div>
 
-                {/* 通知中心 */}
-                {showNotifications && (
-                    <NotificationCenter
-                        notifications={notifications}
-                        onClose={() => setShowNotifications(false)}
-                        onRemove={removeNotification}
-                        onClearAll={clearAllNotifications}
-                    />
-                )}
 
                 <div className="content-body">
                     {activeTab === 'mailboxes' && (
@@ -330,13 +288,6 @@ const App = () => {
                                                         setCurrentMailbox(null);
                                                     }
                                                     
-                                                    addNotification({
-                                                        id: Date.now(),
-                                                        type: 'success',
-                                                        title: '批量删除完成',
-                                                        message: `已删除 ${items.length} 个邮箱`,
-                                                        timestamp: new Date()
-                                                    });
                                                 } catch (err) {
                                                     console.error('批量删除失败:', err);
                                                     alert('批量删除失败: ' + err.message);

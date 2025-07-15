@@ -1810,39 +1810,6 @@ body {
 
 /* ================== 高级功能组件样式 ================== */
 
-/* 通知中心样式 */
-.notification-btn {
-    position: relative;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: var(--transition);
-    margin-right: 8px;
-}
-
-.notification-btn:hover {
-    background: var(--bg-hover);
-    color: var(--primary-blue);
-}
-
-.notification-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: var(--error);
-    color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    font-size: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-}
 
 /* 头部操作区域 */
 .header-actions {
@@ -2125,10 +2092,6 @@ body {
         flex-direction: column;
     }
     
-    .notification-btn {
-        padding: 6px 8px;
-        font-size: 14px;
-    }
     
     .totp-input {
         font-size: 20px;
