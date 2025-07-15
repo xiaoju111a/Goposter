@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-07-15T10:56:44.643092",
+  "target_server": "http://localhost:9090",
+  "results": [
+    {
+      "test": "API Performance",
+      "requests": 20,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "avg_response_time": 141.80883169174194,
+      "min_response_time": 137.33935356140137,
+      "max_response_time": 155.6081771850586
+    },
+    {
+      "test": "Concurrent Requests",
+      "total_requests": 100,
+      "concurrent_users": 20,
+      "success_count": 0,
+      "total_time": 0.9783082008361816,
+      "avg_response_time": 141.61402225494385,
+      "throughput": 102.21727663585749
+    },
+    {
+      "test": "Email Sending",
+      "emails_sent": 3,
+      "success_count": 0,
+      "avg_response_time": 140.46009381612143
+    }
+  ]
+}
