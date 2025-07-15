@@ -1,8 +1,0 @@
-{
-  "enabled": true,
-  "host": "email-smtp.us-east-1.amazonaws.com",
-  "port": 587,
-  "username": "AKIAXA7QUP4N5B53XIV7",
-  "password": "BDm9CIr6aVzWuVcH/4SyZjaPcpCBUPUG3xcXMBT9YMUL",
-  "use_tls": true
-}

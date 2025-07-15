@@ -1,0 +1,171 @@
+{
+  "name": "FreeAgent Mail",
+  "short_name": "FreeAgent Mail",
+  "description": "现代化企业邮箱管理系统",
+  "version": "1.0.0",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#667eea",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  
+  "icons": [
+    {
+      "src": "/assets/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-96.png", 
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-128.png",
+      "sizes": "128x128", 
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/assets/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "桌面端邮箱管理界面"
+    },
+    {
+      "src": "/assets/screenshot-mobile.png", 
+      "sizes": "375x812",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "移动端邮箱界面"
+    }
+  ],
+
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+
+  "shortcuts": [
+    {
+      "name": "收件箱",
+      "short_name": "收件箱",
+      "description": "查看收件箱邮件",
+      "url": "/?tab=mailboxes",
+      "icons": [
+        {
+          "src": "/assets/inbox-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "发送邮件",
+      "short_name": "发送",
+      "description": "撰写新邮件",
+      "url": "/?tab=send",
+      "icons": [
+        {
+          "src": "/assets/send-icon.png", 
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "搜索邮件",
+      "short_name": "搜索",
+      "description": "搜索邮件内容",
+      "url": "/?tab=search",
+      "icons": [
+        {
+          "src": "/assets/search-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+
+  "related_applications": [],
+  "prefer_related_applications": false,
+
+  "protocol_handlers": [
+    {
+      "protocol": "mailto",
+      "url": "/?compose=%s"
+    }
+  ],
+
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "message/rfc822": [".eml"],
+        "application/mbox": [".mbox"],
+        "text/plain": [".txt"]
+      }
+    }
+  ],
+
+  "share_target": {
+    "action": "/",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "subject",
+      "text": "body",
+      "url": "url"
+    }
+  },
+
+  "capture_links": "existing-client-navigate",
+
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+
+  "handle_links": "preferred"
+}

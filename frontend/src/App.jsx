@@ -18,14 +18,13 @@ import SwipeActions from './components/SwipeActions.jsx';
 import PullToRefresh from './components/PullToRefresh.jsx';
 import AttachmentViewer from './components/AttachmentViewer.jsx';
 import SecuritySettings from './components/SecuritySettings.jsx';
-import AdminPanel from './components/AdminPanel.jsx';
 import ForwardingSettings from './components/ForwardingSettings.jsx';
 
 const App = () => {
     const [mailboxes, setMailboxes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'security', 'admin', 'forwarding'
+    const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'security', 'forwarding'
     const [isAuthenticated, setIsAuthenticated] = useState(auth.isAuthenticated());
     const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
     const [searchQuery, setSearchQuery] = useState('');
@@ -211,15 +210,6 @@ const App = () => {
                         <span className="nav-icon">📧</span>
                         <span className="nav-text">转发设置</span>
                     </button>
-                    {currentUser?.isAdmin && (
-                        <button 
-                            className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('admin')}
-                        >
-                            <span className="nav-icon">👤</span>
-                            <span className="nav-text">管理员面板</span>
-                        </button>
-                    )}
                 </nav>
 
                 <div className="sidebar-footer">
@@ -245,7 +235,6 @@ const App = () => {
                         {activeTab === 'create' && '➕ 创建邮箱'}
                         {activeTab === 'security' && '🔒 安全设置'}
                         {activeTab === 'forwarding' && '📧 转发设置'}
-                        {activeTab === 'admin' && '👤 管理员面板'}
                     </div>
                     <div className="header-actions">
                         <button 
@@ -426,9 +415,6 @@ const App = () => {
                         />
                     )}
 
-                    {activeTab === 'admin' && currentUser?.isAdmin && (
-                        <AdminPanel />
-                    )}
                 </div>
             </div>
         </div>
