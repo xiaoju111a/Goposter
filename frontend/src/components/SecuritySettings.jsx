@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { twoFactorAuth, securityLogs } from '../utils/auth.js';
+import configManager from '../utils/config.js';
 
 const SecuritySettings = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [config, setConfig] = useState({
+    admin_email: 'admin@freeagent.live'
+  });
   const [success, setSuccess] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
@@ -11,6 +15,19 @@ const SecuritySettings = () => {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [securityStats, setSecurityStats] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
+
+  // 加载配置
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configData = await configManager.getConfig();
+        setConfig(configData);
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     loadSecurityData();
@@ -91,7 +108,7 @@ const SecuritySettings = () => {
     setError('');
 
     try {
-      const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+      const userEmail = localStorage.getItem('userEmail') || config.admin_email;
       const result = await twoFactorAuth.verify(userEmail, verificationCode);
       if (result.valid) {
         setIs2FAEnabled(true);

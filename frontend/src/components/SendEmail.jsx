@@ -1,13 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sendEmail } from '../utils/api';
+import configManager from '../utils/config.js';
 
 const SendEmail = ({ userEmail = '' }) => {
+  const [config, setConfig] = useState({
+    admin_email: 'admin@freeagent.live'
+  });
   const [emailData, setEmailData] = useState({
-    from: userEmail || 'admin@freeagent.live',
+    from: userEmail || config.admin_email,
     to: '',
     subject: '',
     body: ''
   });
+  
+  // 加载配置
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configData = await configManager.getConfig();
+        setConfig(configData);
+        // 如果没有userEmail，使用管理员邮箱
+        if (!userEmail) {
+          setEmailData(prev => ({
+            ...prev,
+            from: configData.admin_email
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+    loadConfig();
+  }, [userEmail]);
   
   // 当userEmail变化时更新from字段
   React.useEffect(() => {
@@ -67,7 +91,7 @@ const SendEmail = ({ userEmail = '' }) => {
               id="from"
               value={emailData.from}
               onChange={handleChange('from')}
-              placeholder="your-name@freeagent.live"
+              placeholder={`your-name@${config.domain || 'freeagent.live'}`}
               required
             />
           </div>

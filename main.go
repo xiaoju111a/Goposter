@@ -419,6 +419,9 @@ func (ms *MailServer) StartWebServer(port string) {
 	http.HandleFunc("/api/user/mailboxes", ms.apiUserMailboxes)
 	http.HandleFunc("/api/user/emails/", ms.apiUserEmails)
 	
+	// 系统配置API
+	http.HandleFunc("/api/config", ms.apiConfig)
+	
 	log.Printf("Web server listening on 0.0.0.0:%s (accepting external connections)", port)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }
@@ -672,6 +675,28 @@ func (ms *MailServer) apiDNSConfig(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+// 系统配置API - 返回域名等配置信息供前端使用
+func (ms *MailServer) apiConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 返回系统配置信息
+	config := map[string]interface{}{
+		"domain":    ms.domain,
+		"hostname":  ms.hostname,
+		"admin_email": "admin@" + ms.domain,
+		"app_name":  "YgoCard Mail",
+		"version":   "1.0.0",
+	}
+	
+	json.NewEncoder(w).Encode(config)
+}
+
 // SMTP中继API处理方法
 func (ms *MailServer) apiRelayConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -807,7 +832,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
 	html := `<!DOCTYPE html>
 <html>
 <head>
-    <title>FreeAgent 邮箱管理系统</title>
+    <title>YgoCard 邮箱管理系统</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -2037,7 +2062,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         </div>
         
         <div class="header">
-            <h1>🎮 FreeAgent 邮箱管理系统</h1>
+            <h1>🎮 YgoCard 邮箱管理系统</h1>
             <div class="subtitle">基于 ` + ms.domain + ` 域名的专业邮箱服务</div>
             <div class="stats">
                 <div class="stat-item">

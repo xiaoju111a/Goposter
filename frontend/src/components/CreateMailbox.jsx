@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createMailbox } from '../utils/api';
+import configManager from '../utils/config.js';
 
 const CreateMailbox = ({ onMailboxCreated }) => {
   const [mailboxData, setMailboxData] = useState({
@@ -8,7 +9,23 @@ const CreateMailbox = ({ onMailboxCreated }) => {
     description: ''
   });
   const [creating, setCreating] = useState(false);
+  const [config, setConfig] = useState({
+    domain: 'freeagent.live'
+  });
   const [message, setMessage] = useState('');
+
+  // 加载配置
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configData = await configManager.getConfig();
+        setConfig(configData);
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +45,7 @@ const CreateMailbox = ({ onMailboxCreated }) => {
 
     try {
       const result = await createMailbox(mailboxData);
-      setMessage(`✅ 邮箱创建成功！邮箱地址: ${mailboxData.username}@freeagent.live`);
+      setMessage(`✅ 邮箱创建成功！邮箱地址: ${mailboxData.username}@${config.domain}`);
       
       // 清空表单
       setMailboxData({
@@ -81,9 +98,9 @@ const CreateMailbox = ({ onMailboxCreated }) => {
               title="只能包含字母、数字、点、下划线和连字符"
               required
             />
-            <span className="domain-suffix">@freeagent.live</span>
+            <span className="domain-suffix">@{config.domain}</span>
           </div>
-          <small>邮箱地址将为: {mailboxData.username ? `${mailboxData.username}@freeagent.live` : 'username@freeagent.live'}</small>
+          <small>邮箱地址将为: {mailboxData.username ? `${mailboxData.username}@${config.domain}` : `username@${config.domain}`}</small>
         </div>
 
         <div className="form-group">
@@ -138,7 +155,7 @@ const CreateMailbox = ({ onMailboxCreated }) => {
         <h4>💡 使用提示</h4>
         <ul>
           <li>用户名可以包含字母、数字、点(.)、下划线(_)和连字符(-)</li>
-          <li>所有邮箱都使用 @freeagent.live 域名</li>
+          <li>所有邮箱都使用 @{config.domain} 域名</li>
           <li>密码用于IMAP客户端登录邮箱</li>
           <li>创建后即可接收和发送邮件</li>
         </ul>

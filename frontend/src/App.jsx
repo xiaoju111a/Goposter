@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from './utils/api.js';
 import { cacheManager } from './utils/cache.js';
 import { auth, authListener, logout } from './utils/auth.js';
+import configManager from './utils/config.js';
 import MailboxCard from './components/MailboxCard.jsx';
 import EmailList from './components/EmailList.jsx';
 import SendEmail from './components/SendEmail.jsx';
@@ -34,6 +35,10 @@ const App = () => {
     const [filterConfig, setFilterConfig] = useState({});
     const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [config, setConfig] = useState({
+        domain: 'freeagent.live',
+        admin_email: 'admin@freeagent.live'
+    });
 
     const loadMailboxes = useCallback(async () => {
         try {
@@ -54,6 +59,19 @@ const App = () => {
         } finally {
             setLoading(false);
         }
+    }, []);
+
+    // 加载配置
+    useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const configData = await configManager.getConfig();
+                setConfig(configData);
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        };
+        loadConfig();
     }, []);
 
     // 监听认证状态变化
@@ -279,7 +297,7 @@ const App = () => {
                                             onClearSelection={() => setSelectedMailboxes([])}
                                             onDelete={async (items) => {
                                                 // 检查是否包含默认管理员邮箱
-                                                if (items.includes('admin@freeagent.live')) {
+                                                if (items.includes(config.admin_email)) {
                                                     alert('默认管理员邮箱不能删除');
                                                     return;
                                                 }
@@ -374,7 +392,7 @@ const App = () => {
                                                                     mailbox={mailbox}
                                                                     selected={selectedMailboxes.includes(mailbox)}
                                                                     viewMode={viewMode}
-                                                                    onSelect={mailbox === 'admin@freeagent.live' ? undefined : (selected) => {
+                                                                    onSelect={mailbox === config.admin_email ? undefined : (selected) => {
                                                                         if (selected) {
                                                                             setSelectedMailboxes(prev => [...prev, mailbox]);
                                                                         } else {
@@ -397,7 +415,7 @@ const App = () => {
 
                     {activeTab === 'send' && (
                         <div className="send-email-wrapper">
-                            <SendEmail userEmail={currentUser?.email || (mailboxes.length > 0 ? mailboxes[0] : 'admin@freeagent.live')} />
+                            <SendEmail userEmail={currentUser?.email || (mailboxes.length > 0 ? mailboxes[0] : config.admin_email)} />
                         </div>
                     )}
                     

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { login } from '../utils/auth.js';
+import configManager from '../utils/config.js';
 
 const Login = ({ onLoginSuccess }) => {
   const [credentials, setCredentials] = useState({
@@ -8,6 +9,10 @@ const Login = ({ onLoginSuccess }) => {
     twoFactorCode: ''
   });
   const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState({
+    domain: 'freeagent.live',
+    admin_email: 'admin@freeagent.live'
+  });
   const [error, setError] = useState('');
   const [step, setStep] = useState(1); // 1: 基础登录, 2: 2FA验证
   const [requires2FA, setRequires2FA] = useState(false);
@@ -35,6 +40,19 @@ const Login = ({ onLoginSuccess }) => {
       setPasswordStrength(checkPasswordStrength(credentials.password));
     }
   }, [credentials.password]);
+
+  // 加载配置
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configData = await configManager.getConfig();
+        setConfig(configData);
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // 检查锁定状态
   useEffect(() => {
@@ -80,7 +98,7 @@ const Login = ({ onLoginSuccess }) => {
       }
       
       // 密码强度检查（管理员账户允许弱密码）
-      if (passwordStrength.score < 3 && credentials.username !== 'admin@freeagent.live') {
+      if (passwordStrength.score < 3 && credentials.username !== config.admin_email && credentials.username !== 'admin') {
         setError('密码强度不足：' + passwordStrength.feedback.join('、'));
         return;
       }
@@ -334,7 +352,7 @@ const Login = ({ onLoginSuccess }) => {
             <div className="default-credentials">
               <h4>💡 默认管理员账户</h4>
               <p><strong>用户名:</strong> admin</p>
-              <p><strong>邮箱:</strong> admin@freeagent.live</p>
+              <p><strong>邮箱:</strong> {config.admin_email}</p>
               <p><strong>密码:</strong> admin123</p>
               <p><small>用户名会自动转换为完整邮箱地址</small></p>
             </div>

@@ -1,4 +1,5 @@
 // 认证状态管理工具 - 升级为JWT令牌系统，支持2FA和高级安全功能
+import configManager from './config.js';
 
 export const auth = {
   // 检查是否已登录
@@ -66,7 +67,7 @@ export const auth = {
       accessToken,
       email: userEmail,
       username: userEmail?.split('@')[0] || '',
-      isAdmin: userEmail === 'admin@freeagent.live', // 简单的管理员判断
+      isAdmin: false, // 将通过异步方法检查
       exp: expiresAt ? parseInt(expiresAt) / 1000 : null,
       iat: null
     };
@@ -75,6 +76,13 @@ export const auth = {
   // 获取访问令牌用于API调用
   getAccessToken() {
     return localStorage.getItem('access_token');
+  },
+  
+  // 异步检查是否为管理员
+  async isAdmin() {
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) return false;
+    return await configManager.isAdminEmail(userEmail);
   },
   
   // 获取刷新令牌
@@ -217,7 +225,7 @@ export const authListener = new AuthListener();
 // 登录函数 - 支持2FA和JWT
 export const login = async (username, password, twoFactorCode = null) => {
   // 如果username不包含@，自动添加域名
-  const email = username.includes('@') ? username : `${username}@freeagent.live`;
+  const email = await configManager.formatEmailAddress(username);
   
   try {
     const requestBody = {
@@ -302,7 +310,7 @@ export const twoFactorAuth = {
   // 启用2FA
   async enable() {
     const accessToken = auth.getAccessToken();
-    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    const userEmail = localStorage.getItem('userEmail') || await configManager.getAdminEmail();
     
     // 优先使用JWT token，如果没有则使用查询参数
     const useToken = accessToken && accessToken.length > 50;
@@ -346,8 +354,8 @@ export const twoFactorAuth = {
     
     // 如果没有真正的QR码，生成一个
     if (!data.qr_code || data.qr_code.startsWith('Generate QR code')) {
-      const issuer = 'FreeAgent Mail';
-      const accountName = auth.getCurrentUser()?.email || 'user@freeagent.live';
+      const issuer = await configManager.getAppName();
+      const accountName = auth.getCurrentUser()?.email || await configManager.getAdminEmail();
       const otpUrl = `otpauth://totp/${issuer}:${accountName}?secret=${data.secret}&issuer=${issuer}`;
       
       // 使用在线QR码生成服务
@@ -360,7 +368,7 @@ export const twoFactorAuth = {
   // 禁用2FA
   async disable() {
     const accessToken = auth.getAccessToken();
-    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    const userEmail = localStorage.getItem('userEmail') || await configManager.getAdminEmail();
     
     // 优先使用JWT token，如果没有则使用查询参数
     const useToken = accessToken && accessToken.length > 50;
@@ -411,7 +419,7 @@ export const twoFactorAuth = {
   // 获取用户2FA状态
   async getStatus() {
     const accessToken = auth.getAccessToken();
-    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    const userEmail = localStorage.getItem('userEmail') || await configManager.getAdminEmail();
     
     // 优先使用JWT token，如果没有则使用查询参数
     const useToken = accessToken && accessToken.length > 50; // JWT token应该比较长

@@ -200,7 +200,7 @@ func (tm *TLSManager) generateSelfSignedCertificate() error {
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
-			Organization:  []string{"FreeAgent Mail Server"},
+			Organization:  []string{"YgoCard Mail Server"},
 			Country:       []string{"US"},
 			Province:      []string{"CA"},
 			Locality:      []string{"San Francisco"},
