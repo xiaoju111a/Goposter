@@ -1,0 +1,27 @@
+[
+  {
+    "from": "admin@ygocard.org",
+    "to": "support@ygocard.org",
+    "subject": "test",
+    "body": "tests",
+    "date": "Wed, 16 Jul 2025 16:08:34 +0800",
+    "is_auto_reply": false,
+    "charset": "utf-8",
+    "headers": {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Date": "Wed, 16 Jul 2025 16:08:34 +0800",
+      "Dkim-Signature": "v=1; a=rsa-sha256; c=relaxed/simple; d=ygocard.org; s=default; t=1752653314; h=from:to:subject:date; b=XzW8fdOCzysRpCvE3zH5cjz05TPaAGDkk+YSNn2EFHh2Fw8fZZl3x9/DQGICoDANT6NuXCdBq20sH3QMmRg2e2nfDh8NMaMmNKHGlSt81uiCUCGfaG+ccPAVz97IwhxHw6tz10hlTVPSx3Q1pl3XlRtegtqROD0kS5dcUOa10YRqyDTi/T1R2DwqDGBmh2CLfC32IV21JvYLpnD2jbEWJiX3RnmPb2xqEvakU8uDGoBtNP4/MqQkQoC0WYgcbG3flV1+XZKRdb41UsolrtX7aXM4+3XDaV3P0kzWXHIPBF9ElwO1p9/0aSqcyfAvx8DXK6LWGvOSdFxfynGJMuJ+Iw==",
+      "From": "admin@ygocard.org",
+      "Message-Id": "\u003c1752653314@ygocard.org\u003e",
+      "Mime-Version": "1.0",
+      "Subject": "test",
+      "To": "support@ygocard.org"
+    },
+    "embedded": {
+      "links": null
+    },
+    "id": "support_at_ygocard.org_1752653314420690710_09382ef3",
+    "timestamp": "2025-07-16T16:08:34.420741083+08:00",
+    "flags": []
+  }
+]
