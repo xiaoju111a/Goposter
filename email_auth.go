@@ -38,51 +38,28 @@ func NewEmailAuth(domain string) *EmailAuth {
 func (ea *EmailAuth) loadOrGenerateKeys() {
 	keyFile := "./data/dkim_private.pem"
 	
-	// 尝试加载现有密钥
-	if data, err := os.ReadFile(keyFile); err == nil {
-		block, _ := pem.Decode(data)
-		if block != nil {
-			if privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
-				ea.privateKey = privateKey
-				ea.publicKey = &privateKey.PublicKey
-				log.Printf("已加载DKIM密钥")
-				return
-			}
-		}
+	// 加载现有密钥
+	data, err := os.ReadFile(keyFile)
+	if err != nil {
+		log.Printf("无法读取DKIM密钥文件: %v", err)
+		return
 	}
 	
-	// 生成新密钥对
-	log.Printf("生成新的DKIM密钥对...")
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	block, _ := pem.Decode(data)
+	if block == nil {
+		log.Printf("无法解析DKIM密钥文件")
+		return
+	}
+	
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		log.Printf("生成DKIM密钥失败: %v", err)
+		log.Printf("无法解析DKIM私钥: %v", err)
 		return
 	}
 	
 	ea.privateKey = privateKey
 	ea.publicKey = &privateKey.PublicKey
-	
-	// 保存私钥
-	os.MkdirAll("./data", 0755)
-	keyData := x509.MarshalPKCS1PrivateKey(privateKey)
-	block := &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: keyData,
-	}
-	
-	file, err := os.Create(keyFile)
-	if err != nil {
-		log.Printf("保存DKIM私钥失败: %v", err)
-		return
-	}
-	defer file.Close()
-	
-	if err := pem.Encode(file, block); err != nil {
-		log.Printf("编码DKIM私钥失败: %v", err)
-		return
-	}
-	
-	log.Printf("DKIM密钥对生成并保存成功")
+	log.Printf("已加载DKIM密钥")
 }
 
 func (ea *EmailAuth) GetDKIMPublicKey() string {

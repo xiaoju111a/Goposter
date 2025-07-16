@@ -3,8 +3,11 @@ package main
 import (
 	"bufio"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"net"
@@ -124,6 +127,9 @@ func NewMailServer(domain, hostname string) *MailServer {
 	dataDir := "./data"
 	os.MkdirAll(dataDir, 0755)
 	
+	// 生成DKIM密钥对
+	generateDKIMKeys(dataDir)
+	
 	// 初始化SQLite数据库
 	database, err := NewDatabase("./data/mailserver.db")
 	if err != nil {
@@ -162,6 +168,47 @@ func NewMailServer(domain, hostname string) *MailServer {
 	// ms.esClient = NewElasticsearchClient()
 	
 	return ms
+}
+
+// generateDKIMKeys 生成DKIM密钥对
+func generateDKIMKeys(dataDir string) {
+	keyFile := dataDir + "/dkim_private.pem"
+	
+	// 如果密钥文件已存在，直接返回
+	if _, err := os.Stat(keyFile); err == nil {
+		log.Printf("DKIM密钥文件已存在: %s", keyFile)
+		return
+	}
+	
+	log.Printf("生成DKIM密钥对...")
+	
+	// 生成RSA密钥对
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Printf("生成DKIM密钥失败: %v", err)
+		return
+	}
+	
+	// 保存私钥
+	keyData := x509.MarshalPKCS1PrivateKey(privateKey)
+	block := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: keyData,
+	}
+	
+	file, err := os.Create(keyFile)
+	if err != nil {
+		log.Printf("创建DKIM私钥文件失败: %v", err)
+		return
+	}
+	defer file.Close()
+	
+	if err := pem.Encode(file, block); err != nil {
+		log.Printf("保存DKIM私钥失败: %v", err)
+		return
+	}
+	
+	log.Printf("DKIM密钥对生成成功: %s", keyFile)
 }
 
 func (ms *MailServer) AddEmail(to string, email Email) {
@@ -2588,8 +2635,7 @@ func main() {
 		webPort = os.Args[5]
 	}
 	
-	// 检查是否为生产环境（端口25）
-	isProduction := smtpPort == "25"
+	// 生产环境模式 - 移除开发模式判断
 	
 	mailServer := NewMailServer(domain, hostname)
 	
@@ -2610,26 +2656,12 @@ func main() {
 	fmt.Printf("支持功能: SMTP接收/发送、IMAP访问、邮箱管理、自定义用户名\n")
 	fmt.Printf("默认管理员: admin@%s / 密码: admin123\n", domain)
 	fmt.Printf("===============================================\n")
-	
-	if isProduction {
-		fmt.Printf("⚠️  生产环境模式 (端口25)\n")
-		fmt.Printf("请确保已配置以下DNS记录:\n")
-		fmt.Printf("1. A记录: mail.%s -> 服务器IP\n", domain)
-		fmt.Printf("2. MX记录: %s -> mail.%s (优先级10)\n", domain, domain)
-		fmt.Printf("3. TXT记录: %s -> \"v=spf1 a mx ~all\"\n", domain)
-		fmt.Printf("防火墙端口: 25(SMTP), 143(IMAP), %s(Web)\n", webPort)
-		fmt.Printf("===============================================\n")
-	} else {
-		fmt.Printf("🧪 开发/测试模式 (端口%s)\n", smtpPort)
-		fmt.Printf("要启用真实域名邮件接收，请:\n")
-		fmt.Printf("1. 使用 sudo 权限: sudo go run main.go %s %s 25 143 %s\n", domain, hostname, webPort)
-		fmt.Printf("2. 配置防火墙开放端口: 25(SMTP), 143(IMAP), %s(Web)\n", webPort)
-		fmt.Printf("3. 配置DNS MX记录指向此服务器\n")
-		fmt.Printf("邮件客户端配置:\n")
-		fmt.Printf("  IMAP: %s:%s, 用户名: 任意@%s, 密码: 任意\n", hostname, imapPort, domain)
-		fmt.Printf("  SMTP: %s:%s\n", hostname, smtpPort)
-		fmt.Printf("===============================================\n")
-	}
+	fmt.Printf("请确保已配置以下DNS记录:\n")
+	fmt.Printf("1. A记录: mail.%s -> 服务器IP\n", domain)
+	fmt.Printf("2. MX记录: %s -> mail.%s (优先级10)\n", domain, domain)
+	fmt.Printf("3. TXT记录: %s -> \"v=spf1 a mx ~all\"\n", domain)
+	fmt.Printf("防火墙端口: %s(SMTP), %s(IMAP), %s(Web)\n", smtpPort, imapPort, webPort)
+	fmt.Printf("===============================================\n")
 	
 	// 启动Web服务器
 	mailServer.StartWebServer(webPort)

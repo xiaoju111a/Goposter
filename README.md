@@ -60,7 +60,7 @@
 - Node.js 16+
 - Redis (生产环境推荐)
 
-### 开发模式
+### 快速部署
 
 1.  **克隆项目**
     ```bash
@@ -68,28 +68,30 @@
     cd mail
     ```
 
-2.  **启动后端服务器**
-    > 所有 Go 源码位于根目录，并作为单个程序运行。
-
+2.  **编译应用程序**
     ```bash
-    # 此命令会从当前目录编译并运行主程序
-    # 格式: go run . [域名] [主机] [SMTP端口] [IMAP端口] [Web端口]
-    go run . freeagent.live localhost 25 143 9090
+    go build -o mailserver .
     ```
 
-3.  **启动前端开发服务器**
+3.  **启动邮件服务器**
+    ```bash
+    # 格式: ./mailserver [域名] [主机] [SMTP端口] [IMAP端口] [Web端口]
+    sudo ./mailserver ygocard.org localhost 25 143 9090
+    ```
+
+4.  **启动前端服务器**
     ```bash
     cd frontend
     npm install
     npm run dev -- --port 8080 --host 0.0.0.0
     ```
 
-4.  **访问界面**
+5.  **访问界面**
     - **前端界面:** `http://localhost:8080`
     - **后端 API:** `http://localhost:9090`
 
 ### 默认登录账户
-- **用户名:** `admin@freeagent.live`
+- **用户名:** `admin@ygocard.org`
 - **密码:** `admin123`
 
 ## 🏭 生产环境部署
@@ -107,19 +109,18 @@
     ```
 
 3.  **启动邮件服务器**
-    > 生产环境需要 `sudo` 权限以监听低位端口 (25, 143)。
+    > 需要 `sudo` 权限以监听低位端口 (25, 143)。
 
     ```bash
     # 启动 (前台运行)
     # 格式: ./mailserver [域名] [公网主机] [SMTP] [IMAP] [Web/API端口]
-    sudo ./mailserver freeagent.live mail.freeagent.live 25 143 9090
+    sudo ./mailserver ygocard.org mail.ygocard.org 25 143 9090
     ```
 
 4.  **后台持久化运行 (推荐)**
     ```bash
-    nohup sudo ./mailserver freeagent.live localhost 25 143 9090 > server.log 2>&1 &
+    nohup sudo ./mailserver ygocard.org localhost 25 143 9090 > server.log 2>&1 &
     ```
-    > **注意:** 后台运行时，建议使用非特权端口，并通过反向代理（如 Nginx）将 80/443 端口转发至应用端口。
 
 ## 📁 项目结构
 
@@ -146,14 +147,14 @@
 
 ## 🌐 DNS 配置
 
-要使 `freeagent.live` 能够接收外部邮件，请确保以下 DNS 记录已正确配置：
+要使 `ygocard.org` 能够接收外部邮件，请确保以下 DNS 记录已正确配置：
 
 | 类型  | 名称                       | 值 / 目标                  | 优先级 |
 | :---- | :------------------------- | :------------------------- | :----- |
-| **A** | `mail.freeagent.live`      | `[你的服务器IP]`           | -      |
-| **MX**| `freeagent.live`           | `mail.freeagent.live`      | 10     |
-| **TXT**| `freeagent.live`           | `"v=spf1 a mx ~all"`       | -      |
-| **TXT**| `mail._domainkey`          | `"v=DKIM1; k=rsa; p=[公钥]"` | -      |
+| **A** | `mail.ygocard.org`         | `[你的服务器IP]`           | -      |
+| **MX**| `ygocard.org`              | `mail.ygocard.org`         | 10     |
+| **TXT**| `ygocard.org`              | `"v=spf1 a mx ~all"`       | -      |
+| **TXT**| `default._domainkey.ygocard.org` | `"v=DKIM1; k=rsa; p=[公钥]"` | -      |
 
 > 📚 **详细指南:**
 > - **[域名设置](./docs/guides/DOMAIN-SETUP-GUIDE.md)**
