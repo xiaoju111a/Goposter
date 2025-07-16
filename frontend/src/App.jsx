@@ -39,8 +39,8 @@ const App = () => {
     const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [config, setConfig] = useState({
-        domain: 'freeagent.live',
-        admin_email: 'admin@freeagent.live'
+        domain: 'ygocard.live',
+        admin_email: 'admin@ygocard.live'
     });
 
     const loadMailboxes = useCallback(async () => {
@@ -193,7 +193,7 @@ const App = () => {
                 <div className="sidebar-header">
                     <div className="logo">
                         <span className="logo-icon">✉️</span>
-                        <span className="logo-text">FreeAgent Mail</span>
+                        <span className="logo-text">YGoCard Mail</span>
                     </div>
                 </div>
 

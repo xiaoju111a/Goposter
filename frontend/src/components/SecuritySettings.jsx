@@ -6,7 +6,7 @@ const SecuritySettings = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [config, setConfig] = useState({
-    admin_email: 'admin@freeagent.live'
+    admin_email: 'admin@ygocard.live'
   });
   const [success, setSuccess] = useState('');
   const [qrCode, setQrCode] = useState('');

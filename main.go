@@ -2612,7 +2612,7 @@ func (ms *MailServer) getCurrentUserFromRequest(r *http.Request) (string, bool) 
 
 
 func main() {
-	domain := "freeagent.live"
+	domain := "ygocard.live"
 	hostname := "localhost"
 	if len(os.Args) > 1 {
 		domain = os.Args[1]

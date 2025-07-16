@@ -205,7 +205,7 @@ def send_test_email(index):
         
         # 创建邮件
         msg = MIMEMultipart()
-        msg['From'] = 'test@freeagent.live'
+        msg['From'] = 'test@ygocard.org'
         msg['To'] = 'recipient@example.com'
         msg['Subject'] = f'SMTP压力测试邮件 {index}'
         
@@ -214,7 +214,7 @@ def send_test_email(index):
         
         # 发送邮件
         server = smtplib.SMTP('localhost', 25)
-        server.sendmail('test@freeagent.live', ['recipient@example.com'], msg.as_string())
+        server.sendmail('test@ygocard.org', ['recipient@example.com'], msg.as_string())
         server.quit()
         
         end_time = time.time()

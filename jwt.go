@@ -62,7 +62,7 @@ func (jm *JWTManager) GenerateToken(email string, isAdmin bool, expiration time.
 		ExpiresAt: now.Add(expiration).Unix(),
 		NotBefore: now.Unix(),
 		Subject:   email,
-		Issuer:    "freeagent.live",
+		Issuer:    "ygocard.live",
 	}
 	
 	// 编码头部

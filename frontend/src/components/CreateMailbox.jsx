@@ -10,7 +10,7 @@ const CreateMailbox = ({ onMailboxCreated }) => {
   });
   const [creating, setCreating] = useState(false);
   const [config, setConfig] = useState({
-    domain: 'freeagent.live'
+    domain: 'ygocard.live'
   });
   const [message, setMessage] = useState('');
 

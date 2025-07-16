@@ -4,7 +4,7 @@ import configManager from '../utils/config.js';
 
 const SendEmail = ({ userEmail = '' }) => {
   const [config, setConfig] = useState({
-    admin_email: 'admin@freeagent.live'
+    admin_email: 'admin@ygocard.live'
   });
   const [emailData, setEmailData] = useState({
     from: userEmail || config.admin_email,
@@ -91,7 +91,7 @@ const SendEmail = ({ userEmail = '' }) => {
               id="from"
               value={emailData.from}
               onChange={handleChange('from')}
-              placeholder={`your-name@${config.domain || 'freeagent.live'}`}
+              placeholder={`your-name@${config.domain || 'ygocard.live'}`}
               required
             />
           </div>

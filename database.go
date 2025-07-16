@@ -71,10 +71,10 @@ func NewDatabase(dbPath string) (*Database, error) {
 	}
 
 	// 创建加密管理器
-	encryptionManager := NewEncryptionManager("freeagent-mail-encryption-key-2024")
+	encryptionManager := NewEncryptionManager("ygocard-mail-encryption-key-2024")
 	
 	// 创建安全数据库
-	secureDB, err := NewSecureDatabase(dbPath, "freeagent-secure-key-2024", "localhost:6379")
+	secureDB, err := NewSecureDatabase(dbPath, "ygocard-secure-key-2024", "localhost:6379")
 	if err != nil {
 		log.Printf("Failed to create secure database: %v", err)
 		// 继续使用基础数据库
@@ -293,7 +293,7 @@ func (d *Database) IsAdmin(email string) bool {
 	err := d.db.QueryRow("SELECT is_admin FROM users WHERE email = ?", email).Scan(&isAdmin)
 	if err != nil {
 		// 默认管理员账号
-		return email == "admin@freeagent.live" || email == "xiaoju@freeagent.live"
+		return email == "admin@ygocard.live" || email == "xiaoju@ygocard.live"
 	}
 
 	return isAdmin
@@ -446,7 +446,7 @@ func (d *Database) hashPassword(password, salt string) string {
 }
 
 func (d *Database) ensureDefaultAdmin() error {
-	adminEmail := "admin@freeagent.live"
+	adminEmail := "admin@ygocard.live"
 
 	var count int
 	err := d.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", adminEmail).Scan(&count)
@@ -462,7 +462,7 @@ func (d *Database) ensureDefaultAdmin() error {
 	}
 
 	// 也为xiaoju用户创建账号
-	xiaojuEmail := "xiaoju@freeagent.live"
+	xiaojuEmail := "xiaoju@ygocard.live"
 	err = d.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", xiaojuEmail).Scan(&count)
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-# FreeAgent Mail - 功能实现总结
+# YGoCard Mail - 功能实现总结
 
 ## 🎯 任务完成状态
 
@@ -299,7 +299,7 @@ public/
 ### 启动方式
 ```bash
 # 后端
-go run *.go freeagent.live localhost
+go run *.go ygocard.live localhost
 
 # 前端
 cd frontend && npm run dev

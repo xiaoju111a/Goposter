@@ -193,7 +193,7 @@ class MailServerBenchmark:
         
         for i in range(iterations):
             email_data = {
-                "from": "test@freeagent.live",
+                "from": "test@ygocard.org",
                 "to": "recipient@example.com",
                 "subject": f"基准测试邮件 {i+1}",
                 "body": f"这是第{i+1}封基准测试邮件\\n发送时间: {datetime.now().isoformat()}"
@@ -303,7 +303,7 @@ class MailServerBenchmark:
         
         # 测试认证API
         auth_data = {
-            "email": "admin@freeagent.live",
+            "email": "admin@ygocard.org",
             "password": "admin123"
         }
         self.test_api_endpoint("/api/auth/login", "POST", auth_data, iterations=10)

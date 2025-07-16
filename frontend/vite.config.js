@@ -7,7 +7,7 @@ export default defineConfig({
     port: 8080,
     host: '0.0.0.0',
     allowedHosts: [
-      'freeagent.live',
+      'ygocard.live',
       'localhost',
       '127.0.0.1'
     ],

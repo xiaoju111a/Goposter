@@ -1,15 +1,15 @@
-# FreeAgent 邮箱服务器 API 文档
+# YGoCard 邮箱服务器 API 文档
 
 ## 项目概述
 
-FreeAgent 邮箱服务器是一个基于 Go 语言开发的现代化邮箱系统，配备 React 前端管理界面。系统支持完整的邮件收发、邮箱管理、SMTP 中继等功能。
+YGoCard 邮箱服务器是一个基于 Go 语言开发的现代化邮箱系统，配备 React 前端管理界面。系统支持完整的邮件收发、邮箱管理、SMTP 中继等功能。
 
 ### 技术栈
 - **后端**: Go (Golang) - 邮件服务器核心
 - **前端**: React + Vite - 管理界面  
 - **协议**: SMTP、IMAP
 - **中继**: Amazon SES SMTP 中继
-- **域名**: freeagent.live
+- **域名**: ygocard.live
 
 ## 项目结构
 

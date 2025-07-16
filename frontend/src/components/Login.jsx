@@ -10,8 +10,8 @@ const Login = ({ onLoginSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState({
-    domain: 'freeagent.live',
-    admin_email: 'admin@freeagent.live'
+    domain: 'ygocard.live',
+    admin_email: 'admin@ygocard.live'
   });
   const [error, setError] = useState('');
   const [step, setStep] = useState(1); // 1: 基础登录, 2: 2FA验证
@@ -206,7 +206,7 @@ const Login = ({ onLoginSuccess }) => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h2>🔐 {step === 1 ? '登录 FreeAgent 邮箱' : '双因素认证'}</h2>
+          <h2>🔐 {step === 1 ? '登录 YGoCard 邮箱' : '双因素认证'}</h2>
           <p>{step === 1 ? '请输入您的管理员凭据' : '请输入6位验证码'}</p>
           {step === 2 && (
             <button 

@@ -219,7 +219,7 @@ class HighConcurrencyTester {
     async runSMTPWorker(workerId, emailCount, results) {
         for (let i = 0; i < emailCount; i++) {
             const emailData = {
-                from: 'test@freeagent.live',
+                from: 'test@ygocard.org',
                 to: 'recipient@example.com',
                 subject: `高并发测试邮件 Worker${workerId}-${i + 1}`,
                 body: `这是来自Worker ${workerId}的第${i + 1}封高并发测试邮件\n发送时间: ${new Date().toISOString()}`

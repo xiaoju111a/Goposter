@@ -24,10 +24,10 @@ class ConfigManager {
       console.error('Error fetching config:', error);
       // 返回默认配置
       this.config = {
-        domain: 'freeagent.live',
+        domain: 'ygocard.live',
         hostname: 'localhost',
-        admin_email: 'admin@freeagent.live',
-        app_name: 'FreeAgent Mail',
+        admin_email: 'admin@ygocard.live',
+        app_name: 'YGoCard Mail',
         version: '1.0.0'
       };
       return this.config;

@@ -126,7 +126,7 @@ class QuickConcurrencyTester:
                 start_time = time.time()
                 
                 email_data = {
-                    "from": "test@freeagent.live",
+                    "from": "test@ygocard.org",
                     "to": "recipient@example.com", 
                     "subject": f"快速并发测试 Worker{worker_id}-{email_id}",
                     "body": f"这是Worker {worker_id}的第{email_id}封测试邮件\n时间: {datetime.now().isoformat()}"

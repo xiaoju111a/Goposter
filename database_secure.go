@@ -62,7 +62,7 @@ type SensitiveData struct {
 // NewSecureDatabase 创建安全数据库实例
 func NewSecureDatabase(dbPath string, encryptionKey string, redisAddr string) (*SecureDatabase, error) {
 	// 生成加密密钥
-	encKey := pbkdf2.Key([]byte(encryptionKey), []byte("freeagent-salt"), 4096, 32, sha256.New)
+	encKey := pbkdf2.Key([]byte(encryptionKey), []byte("ygocard-salt"), 4096, 32, sha256.New)
 	
 	// 连接SQLite数据库
 	db, err := sql.Open("sqlite3", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")

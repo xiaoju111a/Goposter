@@ -158,7 +158,7 @@ func (s *SMTPTester) TestEmailSending(iterations int) {
 		startTime := time.Now()
 		
 		// 构造测试邮件
-		from := "test@freeagent.live"
+		from := "test@ygocard.org"
 		to := []string{"recipient@example.com"}
 		subject := fmt.Sprintf("SMTP性能测试邮件 %d", i+1)
 		body := fmt.Sprintf("这是第%d封SMTP性能测试邮件\n发送时间: %s", i+1, time.Now().Format("2006-01-02 15:04:05"))
