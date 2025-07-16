@@ -20,13 +20,15 @@ type Database struct {
 }
 
 type UserDB struct {
-	ID           int       `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
-	Salt         string    `json:"salt"`
-	IsAdmin      bool      `json:"is_admin"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastLogin    time.Time `json:"last_login"`
+	ID                int       `json:"id"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	Salt              string    `json:"salt"`
+	IsAdmin           bool      `json:"is_admin"`
+	TwoFactorEnabled  bool      `json:"two_factor_enabled"`
+	TwoFactorSecret   string    `json:"two_factor_secret"`
+	CreatedAt         time.Time `json:"created_at"`
+	LastLogin         time.Time `json:"last_login"`
 }
 
 type SessionDB struct {
@@ -104,6 +106,8 @@ func (d *Database) createTables() error {
 		password_hash TEXT NOT NULL,
 		salt TEXT NOT NULL,
 		is_admin BOOLEAN DEFAULT FALSE,
+		two_factor_enabled BOOLEAN DEFAULT FALSE,
+		two_factor_secret TEXT DEFAULT '',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		last_login DATETIME
 	);`
@@ -193,10 +197,10 @@ func (d *Database) CreateUser(email, password string, isAdmin bool) error {
 	passwordHash := d.hashPassword(password, salt)
 
 	query := `
-		INSERT INTO users (email, password_hash, salt, is_admin)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO users (email, password_hash, salt, is_admin, two_factor_enabled, two_factor_secret)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	_, err = d.db.Exec(query, email, passwordHash, salt, isAdmin)
+	_, err = d.db.Exec(query, email, passwordHash, salt, isAdmin, false, "")
 	return err
 }
 
@@ -229,7 +233,16 @@ func (d *Database) Authenticate(email, password string) bool {
 	return false
 }
 
-func (d *Database) CreateSession(email string) (string, error) {
+func (d *Database) CreateSession(session *SessionDB) error {
+	query := `
+		INSERT INTO sessions (session_id, email, expires_at)
+		VALUES (?, ?, ?)
+	`
+	_, err := d.db.Exec(query, session.SessionID, session.Email, session.ExpiresAt)
+	return err
+}
+
+func (d *Database) CreateSessionOld(email string) (string, error) {
 	email = strings.ToLower(email)
 	sessionID := d.generateSessionID()
 
@@ -384,6 +397,47 @@ func (d *Database) generateSessionID() string {
 	bytes := make([]byte, 32)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
+}
+
+// GetAllUsers 获取所有用户
+func (d *Database) GetAllUsers() ([]*UserDB, error) {
+	query := `
+		SELECT id, email, password_hash, salt, is_admin, two_factor_enabled, two_factor_secret, created_at, last_login
+		FROM users
+		ORDER BY created_at DESC
+	`
+	rows, err := d.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var users []*UserDB
+	for rows.Next() {
+		user := &UserDB{}
+		err := rows.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Salt, &user.IsAdmin, 
+			&user.TwoFactorEnabled, &user.TwoFactorSecret, &user.CreatedAt, &user.LastLogin)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	
+	return users, nil
+}
+
+// DeleteUser 删除用户
+func (d *Database) DeleteUser(email string) error {
+	query := `DELETE FROM users WHERE email = ?`
+	_, err := d.db.Exec(query, email)
+	return err
+}
+
+// DeleteUserSessions 删除用户的所有会话
+func (d *Database) DeleteUserSessions(email string) error {
+	query := `DELETE FROM sessions WHERE email = ?`
+	_, err := d.db.Exec(query, email)
+	return err
 }
 
 func (d *Database) hashPassword(password, salt string) string {
@@ -813,9 +867,9 @@ func (d *Database) GetUser(email string) (*UserDB, error) {
 	var user UserDB
 	var lastLogin *time.Time
 	err := d.db.QueryRow(`
-		SELECT id, email, password_hash, salt, is_admin, created_at, last_login
+		SELECT id, email, password_hash, salt, is_admin, two_factor_enabled, two_factor_secret, created_at, last_login
 		FROM users WHERE email = ?
-	`, email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Salt, &user.IsAdmin, &user.CreatedAt, &lastLogin)
+	`, email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Salt, &user.IsAdmin, &user.TwoFactorEnabled, &user.TwoFactorSecret, &user.CreatedAt, &lastLogin)
 	
 	if err != nil {
 		return nil, err
@@ -827,6 +881,15 @@ func (d *Database) GetUser(email string) (*UserDB, error) {
 	}
 	
 	return &user, nil
+}
+
+// Update2FA 更新用户2FA设置
+func (d *Database) Update2FA(email string, enabled bool, secret string) error {
+	email = strings.ToLower(email)
+	
+	query := `UPDATE users SET two_factor_enabled = ?, two_factor_secret = ? WHERE email = ?`
+	_, err := d.db.Exec(query, enabled, secret, email)
+	return err
 }
 
 // GetSession 获取会话信息

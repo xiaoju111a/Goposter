@@ -133,7 +133,7 @@ func NewMailServer(domain, hostname string) *MailServer {
 	// 初始化各个组件
 	storage := NewEmailStorage(dataDir)
 	mailboxManager := NewMailboxManager(domain, "./data/mailboxes.json")
-	userAuth := NewUserAuth("./data/users.json")
+	userAuth := NewUserAuth(database)
 	emailAuth := NewEmailAuth(domain)
 	smtpSender := NewSMTPSender(domain, hostname, emailAuth)
 	relayManager := NewSMTPRelayManager("./data/smtp_relay.json")
@@ -590,21 +590,40 @@ func (ms *MailServer) apiLogin(w http.ResponseWriter, r *http.Request) {
 	
 	// 使用邮箱认证
 	if ms.database.ValidateMailboxCredentials(req.Email, req.Password) {
-		sessionID, _ := ms.database.CreateSession(req.Email)
-		
 		// 检查是否是管理员用户
 		isAdmin := false
 		if user, err := ms.database.GetUser(req.Email); err == nil {
 			isAdmin = user.IsAdmin
 		}
 		
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":     "success",
-			"session_id": sessionID,
-			"email":      req.Email,
+		// 生成JWT令牌
+		tokens, err := ms.userAuth.GenerateJWTTokenWithAdmin(req.Email, isAdmin)
+		if err != nil {
+			log.Printf("JWT generation failed for %s: %v", req.Email, err)
+			// JWT失败，使用备用方案
+			sessionID, _ := ms.userAuth.CreateSession(req.Email)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"access_token": "backup_" + sessionID,
+				"token_type":   "Bearer",
+				"expires_in":   86400,
+				"is_admin":     isAdmin,
+				"user_email":   req.Email,
+			})
+			return
+		}
+		
+		// JWT成功
+		response := map[string]interface{}{
+			"user_email": req.Email,
 			"is_admin":   isAdmin,
-		})
+		}
+		for k, v := range tokens {
+			response[k] = v
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials"})
@@ -1259,14 +1278,77 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         
         // 检查登录状态
         function checkLogin() {
-            const user = localStorage.getItem('currentUser');
-            if (!user) {
+            const accessToken = localStorage.getItem('access_token');
+            const userEmail = localStorage.getItem('userEmail');
+            const expiresAt = localStorage.getItem('token_expires_at');
+            
+            if (!accessToken || !userEmail) {
                 showLoginModal();
                 return false;
             }
-            currentUser = user;
+            
+            // 检查token是否过期
+            if (expiresAt) {
+                const now = Date.now();
+                if (now >= parseInt(expiresAt)) {
+                    console.warn('Token has expired');
+                    clearAuth();
+                    showLoginModal();
+                    return false;
+                }
+            }
+            
+            currentUser = userEmail;
             updateUserBar();
             return true;
+        }
+        
+        // 清除认证信息
+        function clearAuth() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('token_expires_at');
+            localStorage.removeItem('currentUser'); // 兼容旧版本
+        }
+        
+        // 获取认证头
+        function getAuthHeaders() {
+            const accessToken = localStorage.getItem('access_token');
+            const headers = {'Content-Type': 'application/json'};
+            if (accessToken) {
+                headers['Authorization'] = 'Bearer ' + accessToken;
+            }
+            return headers;
+        }
+        
+        // 带认证的fetch
+        async function authenticatedFetch(url, options = {}) {
+            const headers = getAuthHeaders();
+            const mergedOptions = {
+                ...options,
+                headers: {
+                    ...headers,
+                    ...(options.headers || {})
+                }
+            };
+            
+            console.log('Making authenticated request to:', url);
+            console.log('Headers:', mergedOptions.headers);
+            
+            const response = await fetch(url, mergedOptions);
+            
+            console.log('Response status:', response.status);
+            
+            // 如果返回401，清除认证并重新登录
+            if (response.status === 401) {
+                console.log('401 Unauthorized - clearing auth and redirecting to login');
+                clearAuth();
+                checkLogin();
+                throw new Error('Authentication required');
+            }
+            
+            return response;
         }
         
         // 显示登录模态框
@@ -1298,8 +1380,24 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
                 
                 if (response.ok) {
                     const result = await response.json();
+                    
+                    // 保存JWT令牌信息
+                    if (result.access_token) {
+                        localStorage.setItem('access_token', result.access_token);
+                    }
+                    if (result.refresh_token) {
+                        localStorage.setItem('refresh_token', result.refresh_token);
+                    }
+                    localStorage.setItem('userEmail', email);
+                    localStorage.setItem('currentUser', email); // 兼容性
+                    
+                    // 设置token过期时间
+                    if (result.expires_in) {
+                        const expiresAt = Date.now() + (result.expires_in * 1000);
+                        localStorage.setItem('token_expires_at', expiresAt.toString());
+                    }
+                    
                     currentUser = email;
-                    localStorage.setItem('currentUser', email);
                     hideLoginModal();
                     updateUserBar();
                     init(); // 重新初始化页面
@@ -1315,12 +1413,24 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         // 登出处理
         async function logout() {
             try {
-                await fetch('/api/logout', {method: 'POST'});
-                localStorage.removeItem('currentUser');
+                const accessToken = localStorage.getItem('access_token');
+                if (accessToken) {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                }
+                clearAuth();
                 currentUser = null;
                 checkLogin();
             } catch (error) {
                 console.error('登出失败:', error);
+                clearAuth();
+                currentUser = null;
+                checkLogin();
             }
         }
         
@@ -1462,7 +1572,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         
         async function loadMailboxes() {
             try {
-                const response = await fetch('/api/mailboxes');
+                const response = await authenticatedFetch('/api/mailboxes');
                 const mailboxes = await response.json();
                 const container = document.getElementById('mailboxes');
                 container.innerHTML = '';
@@ -1537,7 +1647,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
                     }
                 }
                 
-                const response = await fetch('/api/emails/' + encodeURIComponent(mailbox));
+                const response = await authenticatedFetch('/api/emails/' + encodeURIComponent(mailbox));
                 const emails = await response.json();
                 
                 // 自动解码Base64内容
@@ -1693,7 +1803,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         
         async function loadMailboxesList() {
             try {
-                const response = await fetch('/api/mailboxes/manage');
+                const response = await authenticatedFetch('/api/mailboxes/manage');
                 const mailboxes = await response.json();
                 const container = document.getElementById('mailboxesList');
                 
@@ -2789,19 +2899,61 @@ func (ms *MailServer) apiAuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
-	// 暂时跳过2FA验证，UserDB结构中没有TwoFactorEnabled字段
-	// 如果需要2FA功能，需要扩展UserDB结构体
+	// 获取用户信息
+	user, err := ms.database.GetUser(req.Email)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed to get user info"})
+		return
+	}
 	
-	// 生成简单的JWT令牌
-	accessToken := base64.StdEncoding.EncodeToString([]byte(req.Email + ":" + time.Now().Format(time.RFC3339)))
+	// 检查是否启用了2FA
+	if user.TwoFactorEnabled {
+		// 如果启用了2FA但没有提供2FA代码，要求提供2FA代码
+		if req.TwoFactorCode == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "2fa_required",
+				"message": "Two-factor authentication code required",
+				"requires_2fa": true,
+			})
+			return
+		}
+		
+		// 验证2FA代码
+		if !ms.userAuth.Verify2FA(req.Email, req.TwoFactorCode) {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid 2FA code"})
+			return
+		}
+	}
 	
-	// 返回JWT令牌
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"access_token": accessToken,
-		"token_type":   "Bearer",
-		"expires_in":   86400, // 24小时
-		"user_email":   req.Email,
-	})
+	// 生成令牌 - 确保万无一失
+	var response map[string]interface{}
+	
+	// 尝试生成JWT令牌
+	if tokens, err := ms.userAuth.GenerateJWTTokenWithAdmin(req.Email, user.IsAdmin); err == nil {
+		// JWT成功
+		response = map[string]interface{}{
+			"token_type":   "Bearer",
+			"user_email":   req.Email,
+		}
+		for k, v := range tokens {
+			response[k] = v
+		}
+	} else {
+		// JWT失败，使用base64备用方案
+		log.Printf("JWT生成失败，使用备用方案 for %s: %v", req.Email, err)
+		accessToken := base64.StdEncoding.EncodeToString([]byte(req.Email + ":" + time.Now().Format(time.RFC3339)))
+		response = map[string]interface{}{
+			"access_token": accessToken,
+			"token_type":   "Bearer",
+			"expires_in":   86400,
+			"user_email":   req.Email,
+		}
+	}
+	
+	json.NewEncoder(w).Encode(response)
 }
 
 func (ms *MailServer) apiAuthLogout(w http.ResponseWriter, r *http.Request) {
@@ -2875,25 +3027,31 @@ func (ms *MailServer) apiAuth2FAEnable(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	
-	// 验证JWT token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "No token provided", http.StatusUnauthorized)
-		return
+	// 获取用户邮箱地址
+	email := ms.getUserFromRequest(r)
+	if email == "" {
+		// 如果无法从token获取用户，尝试从查询参数获取（兼容性）
+		email = r.URL.Query().Get("email")
+		if email == "" {
+			http.Error(w, "Invalid token or missing email", http.StatusUnauthorized)
+			return
+		}
 	}
 	
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	email, _, err := ms.userAuth.AuthenticateWithJWT(tokenString)
-	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
+	log.Printf("Attempting to enable 2FA for user: %s", email)
 	
 	// 启用2FA
 	secret, err := ms.userAuth.Enable2FA(email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	
+	// 同步到数据库
+	err = ms.database.Update2FA(email, true, secret)
+	if err != nil {
+		log.Printf("Failed to update 2FA status in database: %v", err)
+		// 不返回错误，因为内存中已经更新了
 	}
 	
 	json.NewEncoder(w).Encode(map[string]string{
@@ -2911,25 +3069,29 @@ func (ms *MailServer) apiAuth2FADisable(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	
-	// 验证JWT token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "No token provided", http.StatusUnauthorized)
-		return
-	}
-	
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	email, _, err := ms.userAuth.AuthenticateWithJWT(tokenString)
-	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
+	// 获取用户邮箱地址
+	email := ms.getUserFromRequest(r)
+	if email == "" {
+		// 如果无法从token获取用户，尝试从查询参数获取（兼容性）
+		email = r.URL.Query().Get("email")
+		if email == "" {
+			http.Error(w, "Invalid token or missing email", http.StatusUnauthorized)
+			return
+		}
 	}
 	
 	// 禁用2FA
-	err = ms.userAuth.Disable2FA(email)
+	err := ms.userAuth.Disable2FA(email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	
+	// 同步到数据库
+	err = ms.database.Update2FA(email, false, "")
+	if err != nil {
+		log.Printf("Failed to update 2FA status in database: %v", err)
+		// 不返回错误，因为内存中已经更新了
 	}
 	
 	json.NewEncoder(w).Encode(map[string]string{"message": "2FA disabled successfully"})
@@ -2970,23 +3132,20 @@ func (ms *MailServer) apiAuth2FAStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	
-	// 验证JWT token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
+	// 获取用户邮箱地址
+	userEmail := ms.getUserFromRequest(r)
+	if userEmail == "" {
+		// 如果无法从token获取用户，尝试从查询参数获取（兼容性）
+		userEmail = r.URL.Query().Get("email")
+		if userEmail == "" {
+			http.Error(w, "Invalid token or missing email", http.StatusUnauthorized)
+			return
+		}
 	}
 	
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	claims, err := ms.userAuth.ValidateJWTToken(tokenString)
+	// 从数据库获取用户2FA状态
+	user, err := ms.database.GetUser(userEmail)
 	if err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-	
-	// 获取用户信息
-	user, exists := ms.userAuth.GetUser(claims.Email)
-	if !exists {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -3666,7 +3825,7 @@ func (ms *MailServer) apiAdminUsers(w http.ResponseWriter, r *http.Request) {
 			"created_at":         user.CreatedAt,
 			"last_login":         user.LastLogin,
 			"two_factor_enabled": user.TwoFactorEnabled,
-			"assigned_mailboxes": user.AssignedMailboxes,
+			"assigned_mailboxes": []string{},
 		}
 		publicUsers = append(publicUsers, publicUser)
 	}
@@ -4012,9 +4171,8 @@ func (ms *MailServer) getUserFromRequest(r *http.Request) string {
 		}
 		
 		// 先尝试JWT验证
-		userEmail, err := ms.userAuth.ValidateJWT(token)
-		if err == nil {
-			return userEmail
+		if claims, err := ms.userAuth.ValidateJWTToken(token); err == nil {
+			return claims.Email
 		}
 		
 		// 如果JWT验证失败，尝试简单的base64解码
@@ -4022,7 +4180,11 @@ func (ms *MailServer) getUserFromRequest(r *http.Request) string {
 			parts := strings.Split(string(decoded), ":")
 			if len(parts) >= 2 {
 				email := parts[0]
-				// 简单验证：检查邮箱是否存在于数据库中
+				// 简单验证：检查用户是否存在于数据库中
+				if _, err := ms.database.GetUser(email); err == nil {
+					return email
+				}
+				// 如果用户不存在，也检查邮箱
 				if _, err := ms.database.GetMailbox(email); err == nil {
 					return email
 				}
@@ -4043,7 +4205,7 @@ func (ms *MailServer) getUserFromRequest(r *http.Request) string {
 }
 
 // getAllUsers 获取所有用户
-func (ms *MailServer) getAllUsers() []User {
+func (ms *MailServer) getAllUsers() []*UserDB {
 	return ms.userAuth.GetAllUsers()
 }
 

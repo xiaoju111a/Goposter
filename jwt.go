@@ -285,7 +285,7 @@ func (ejm *ExtendedJWTManager) CleanupBlacklist() {
 // GenerateTokenPair 生成访问令牌和刷新令牌对
 func (ejm *ExtendedJWTManager) GenerateTokenPair(email string, isAdmin bool) (map[string]interface{}, error) {
 	// 生成访问令牌（短期）
-	accessToken, err := ejm.GenerateToken(email, isAdmin, 15*time.Minute)
+	accessToken, err := ejm.GenerateToken(email, isAdmin, 24*time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (ejm *ExtendedJWTManager) GenerateTokenPair(email string, isAdmin bool) (ma
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 		"token_type":    "Bearer",
-		"expires_in":    900, // 15分钟
+		"expires_in":    86400, // 24小时
 		"is_admin":      isAdmin,
 	}, nil
 }

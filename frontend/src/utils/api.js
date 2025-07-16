@@ -89,12 +89,16 @@ export const api = {
         const cached = cacheManager.get(`emails-${mailbox}`);
         if (cached) return cached;
 
-        // 直接调用API，不使用认证
+        // 调用API并包含认证头
+        const headers = {'Content-Type': 'application/json'};
+        const accessToken = localStorage.getItem('access_token');
+        if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+        
         const response = await fetch(`/api/emails/${encodeURIComponent(mailbox)}`, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: headers
         });
         
         if (!response.ok) {

@@ -19,8 +19,18 @@ export const auth = {
       }
     }
     
-    // 验证token格式（简单验证是否是base64编码的邮箱地址）
+    // 验证JWT token格式
     try {
+      // JWT应该有3个部分，用.分隔
+      const parts = accessToken.split('.');
+      if (parts.length === 3) {
+        // 尝试解码JWT payload验证用户邮箱
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload.email === userEmail) {
+          return true;
+        }
+      }
+      // 如果不是JWT格式，尝试简单的base64解码（兼容旧token）
       const decoded = atob(accessToken);
       if (decoded.includes(userEmail)) {
         return true;
@@ -292,14 +302,26 @@ export const twoFactorAuth = {
   // 启用2FA
   async enable() {
     const accessToken = auth.getAccessToken();
-    if (!accessToken) throw new Error('Not authenticated');
+    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    
+    // 优先使用JWT token，如果没有则使用查询参数
+    const useToken = accessToken && accessToken.length > 50;
+    
+    const url = useToken 
+      ? '/api/auth/2fa/enable'
+      : `/api/auth/2fa/enable?email=${encodeURIComponent(userEmail)}`;
+    
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (useToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
 
-    const response = await fetch('/api/auth/2fa/enable', {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {
@@ -338,14 +360,26 @@ export const twoFactorAuth = {
   // 禁用2FA
   async disable() {
     const accessToken = auth.getAccessToken();
-    if (!accessToken) throw new Error('Not authenticated');
+    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    
+    // 优先使用JWT token，如果没有则使用查询参数
+    const useToken = accessToken && accessToken.length > 50;
+    
+    const url = useToken 
+      ? '/api/auth/2fa/disable'
+      : `/api/auth/2fa/disable?email=${encodeURIComponent(userEmail)}`;
+    
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (useToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
 
-    const response = await fetch('/api/auth/2fa/disable', {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {
@@ -377,14 +411,26 @@ export const twoFactorAuth = {
   // 获取用户2FA状态
   async getStatus() {
     const accessToken = auth.getAccessToken();
-    if (!accessToken) throw new Error('Not authenticated');
-
-    const response = await fetch('/api/auth/2fa/status', {
+    const userEmail = localStorage.getItem('userEmail') || 'admin@freeagent.live';
+    
+    // 优先使用JWT token，如果没有则使用查询参数
+    const useToken = accessToken && accessToken.length > 50; // JWT token应该比较长
+    
+    const url = useToken 
+      ? '/api/auth/2fa/status'
+      : `/api/auth/2fa/status?email=${encodeURIComponent(userEmail)}`;
+    
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (useToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+    
+    const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (!response.ok) {

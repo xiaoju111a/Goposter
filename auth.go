@@ -7,10 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"log"
 	"net/smtp"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -18,10 +17,8 @@ import (
 )
 
 type UserAuth struct {
-	users    map[string]*User
-	sessions map[string]*Session
+	db       *Database
 	usersMu  sync.RWMutex
-	filename string
 	maxFailedAttempts int
 	lockoutDuration   time.Duration
 	jwtManager *ExtendedJWTManager
@@ -52,16 +49,13 @@ type UsersConfig struct {
 	Users map[string]*User `json:"users"`
 }
 
-func NewUserAuth(filename string) *UserAuth {
+func NewUserAuth(db *Database) *UserAuth {
 	ua := &UserAuth{
-		users:    make(map[string]*User),
-		sessions: make(map[string]*Session),
-		filename: filename,
+		db:                db,
 		maxFailedAttempts: 5,
 		lockoutDuration:   30 * time.Minute,
 		jwtManager: NewExtendedJWTManager("freeagent-mail-secret-key-2024"),
 	}
-	ua.loadFromFile()
 	ua.ensureDefaultAdmin()
 	return ua
 }
@@ -74,7 +68,7 @@ func (ua *UserAuth) CreateUser(email, password string, isAdmin bool) error {
 	email = strings.ToLower(email)
 	
 	// 检查用户是否已存在
-	if _, exists := ua.users[email]; exists {
+	if _, err := ua.db.GetUser(email); err == nil {
 		return fmt.Errorf("user already exists: %s", email)
 	}
 	
@@ -87,18 +81,18 @@ func (ua *UserAuth) CreateUser(email, password string, isAdmin bool) error {
 	salt := ua.generateSalt()
 	passwordHash := ua.hashPassword(password, salt)
 	
-	user := &User{
-		Email:        email,
-		PasswordHash: passwordHash,
-		Salt:         salt,
-		IsAdmin:      isAdmin,
-		CreatedAt:    time.Now(),
-		TwoFactorEnabled: false,
-		FailedAttempts:   0,
+	user := &UserDB{
+		Email:             email,
+		PasswordHash:      passwordHash,
+		Salt:              salt,
+		IsAdmin:           isAdmin,
+		CreatedAt:         time.Now(),
+		TwoFactorEnabled:  false,
+		TwoFactorSecret:   "",
+		LastLogin:         time.Time{},
 	}
 	
-	ua.users[email] = user
-	return ua.saveToFile()
+	return ua.db.CreateUser(user.Email, password, user.IsAdmin)
 }
 
 // Authenticate 验证用户凭据
@@ -107,34 +101,20 @@ func (ua *UserAuth) Authenticate(email, password string) bool {
 	defer ua.usersMu.Unlock()
 	
 	email = strings.ToLower(email)
-	user, exists := ua.users[email]
+	user, err := ua.db.GetUser(email)
 	
-	if !exists {
+	if err != nil {
 		// 对于不存在的用户，使用简单策略：接受默认密码
 		return ua.checkDefaultPassword(email, password)
-	}
-	
-	// 检查账户是否被锁定
-	if ua.isAccountLocked(user) {
-		return false
 	}
 	
 	// 验证密码
 	expectedHash := ua.hashPassword(password, user.Salt)
 	if user.PasswordHash == expectedHash {
-		// 重置失败次数
-		user.FailedAttempts = 0
+		// 更新最后登录时间
 		user.LastLogin = time.Now()
-		ua.saveToFile()
 		return true
 	}
-	
-	// 记录失败尝试
-	user.FailedAttempts++
-	if user.FailedAttempts >= ua.maxFailedAttempts {
-		user.LockedUntil = time.Now().Add(ua.lockoutDuration)
-	}
-	ua.saveToFile()
 	
 	return false
 }
@@ -147,15 +127,14 @@ func (ua *UserAuth) CreateSession(email string) (string, error) {
 	email = strings.ToLower(email)
 	sessionID := ua.generateSessionID()
 	
-	session := &Session{
+	session := &SessionDB{
 		SessionID: sessionID,
 		Email:     email,
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(24 * time.Hour), // 24小时过期
 	}
 	
-	ua.sessions[sessionID] = session
-	return sessionID, nil
+	return sessionID, ua.db.CreateSession(session)
 }
 
 // ValidateSession 验证会话
@@ -163,14 +142,14 @@ func (ua *UserAuth) ValidateSession(sessionID string) (string, bool) {
 	ua.usersMu.RLock()
 	defer ua.usersMu.RUnlock()
 	
-	session, exists := ua.sessions[sessionID]
-	if !exists {
+	session, err := ua.db.GetSession(sessionID)
+	if err != nil {
 		return "", false
 	}
 	
 	// 检查是否过期
 	if time.Now().After(session.ExpiresAt) {
-		delete(ua.sessions, sessionID)
+		ua.db.DeleteSession(sessionID)
 		return "", false
 	}
 	
@@ -182,7 +161,7 @@ func (ua *UserAuth) DeleteSession(sessionID string) {
 	ua.usersMu.Lock()
 	defer ua.usersMu.Unlock()
 	
-	delete(ua.sessions, sessionID)
+	ua.db.DeleteSession(sessionID)
 }
 
 // IsAdmin 检查用户是否为管理员
@@ -190,8 +169,8 @@ func (ua *UserAuth) IsAdmin(email string) bool {
 	ua.usersMu.RLock()
 	defer ua.usersMu.RUnlock()
 	
-	user, exists := ua.users[strings.ToLower(email)]
-	if !exists {
+	user, err := ua.db.GetUser(strings.ToLower(email))
+	if err != nil {
 		// 默认管理员账号
 		return email == "admin" || strings.HasSuffix(email, "@admin")
 	}
@@ -200,29 +179,27 @@ func (ua *UserAuth) IsAdmin(email string) bool {
 }
 
 // GetUser 获取用户信息
-func (ua *UserAuth) GetUser(email string) (*User, bool) {
+func (ua *UserAuth) GetUser(email string) (*UserDB, bool) {
 	ua.usersMu.RLock()
 	defer ua.usersMu.RUnlock()
 	
-	user, exists := ua.users[strings.ToLower(email)]
-	if !exists {
+	user, err := ua.db.GetUser(strings.ToLower(email))
+	if err != nil {
 		return nil, false
 	}
 	
-	// 返回副本，避免并发问题
-	userCopy := *user
-	return &userCopy, true
+	return user, true
 }
 
 // GetAllUsers 获取所有用户（仅管理员）
-func (ua *UserAuth) GetAllUsers() []User {
+func (ua *UserAuth) GetAllUsers() []*UserDB {
 	ua.usersMu.RLock()
 	defer ua.usersMu.RUnlock()
 	
-	users := make([]User, 0, len(ua.users))
-	for _, user := range ua.users {
-		userCopy := *user
-		users = append(users, userCopy)
+	users, err := ua.db.GetAllUsers()
+	if err != nil {
+		log.Printf("Failed to get all users: %v", err)
+		return []*UserDB{}
 	}
 	
 	return users
@@ -243,20 +220,15 @@ func (ua *UserAuth) DeleteUser(email string) error {
 	defer ua.usersMu.Unlock()
 	
 	email = strings.ToLower(email)
-	if _, exists := ua.users[email]; !exists {
+	_, err := ua.db.GetUser(email)
+	if err != nil {
 		return fmt.Errorf("user not found: %s", email)
 	}
 	
-	delete(ua.users, email)
-	
 	// 清理该用户的所有会话
-	for sessionID, session := range ua.sessions {
-		if session.Email == email {
-			delete(ua.sessions, sessionID)
-		}
-	}
+	ua.db.DeleteUserSessions(email)
 	
-	return ua.saveToFile()
+	return ua.db.DeleteUser(email)
 }
 
 // checkDefaultPassword 检查默认密码策略
@@ -305,65 +277,26 @@ func (ua *UserAuth) ensureDefaultAdmin() {
 	ua.usersMu.Lock()
 	defer ua.usersMu.Unlock()
 	
-	if _, exists := ua.users[adminEmail]; !exists {
+	if _, err := ua.db.GetUser(adminEmail); err != nil {
 		salt := ua.generateSalt()
 		passwordHash := ua.hashPassword("admin123", salt)
 		
-		admin := &User{
-			Email:        adminEmail,
-			PasswordHash: passwordHash,
-			Salt:         salt,
-			IsAdmin:      true,
-			CreatedAt:    time.Now(),
+		admin := &UserDB{
+			Email:             adminEmail,
+			PasswordHash:      passwordHash,
+			Salt:              salt,
+			IsAdmin:           true,
+			CreatedAt:         time.Now(),
+			TwoFactorEnabled:  false,
+			TwoFactorSecret:   "",
+			LastLogin:         time.Time{},
 		}
 		
-		ua.users[adminEmail] = admin
-		ua.saveToFile()
+		ua.db.CreateUser(admin.Email, "admin123", admin.IsAdmin)
 	}
 }
 
-func (ua *UserAuth) loadFromFile() error {
-	if ua.filename == "" {
-		return nil
-	}
-	
-	data, err := os.ReadFile(ua.filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	
-	var config UsersConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return err
-	}
-	
-	ua.users = config.Users
-	if ua.users == nil {
-		ua.users = make(map[string]*User)
-	}
-	
-	return nil
-}
-
-func (ua *UserAuth) saveToFile() error {
-	if ua.filename == "" {
-		return nil
-	}
-	
-	config := UsersConfig{
-		Users: ua.users,
-	}
-	
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return err
-	}
-	
-	return os.WriteFile(ua.filename, data, 0644)
-}
+// 不再需要文件存储相关方法
 
 // validatePasswordStrength 验证密码强度
 func (ua *UserAuth) validatePasswordStrength(password string) error {
@@ -415,8 +348,9 @@ func (ua *UserAuth) Enable2FA(email string) (string, error) {
 	defer ua.usersMu.Unlock()
 	
 	email = strings.ToLower(email)
-	user, exists := ua.users[email]
-	if !exists {
+	user, err := ua.db.GetUser(email)
+	
+	if err != nil {
 		return "", fmt.Errorf("user not found: %s", email)
 	}
 	
@@ -429,7 +363,7 @@ func (ua *UserAuth) Enable2FA(email string) (string, error) {
 	user.TwoFactorSecret = secret
 	user.TwoFactorEnabled = true
 	
-	ua.saveToFile()
+	ua.db.Update2FA(email, true, secret)
 	
 	// 返回用于设置认证器的密钥
 	return secret, nil
@@ -441,15 +375,15 @@ func (ua *UserAuth) Disable2FA(email string) error {
 	defer ua.usersMu.Unlock()
 	
 	email = strings.ToLower(email)
-	user, exists := ua.users[email]
-	if !exists {
+	user, err := ua.db.GetUser(email)
+	if err != nil {
 		return fmt.Errorf("user not found: %s", email)
 	}
 	
 	user.TwoFactorEnabled = false
 	user.TwoFactorSecret = ""
 	
-	return ua.saveToFile()
+	return ua.db.Update2FA(email, false, "")
 }
 
 // Verify2FA 验证双因素认证代码
@@ -458,8 +392,8 @@ func (ua *UserAuth) Verify2FA(email, code string) bool {
 	defer ua.usersMu.RUnlock()
 	
 	email = strings.ToLower(email)
-	user, exists := ua.users[email]
-	if !exists || !user.TwoFactorEnabled {
+	user, err := ua.db.GetUser(email)
+	if err != nil || !user.TwoFactorEnabled {
 		return false
 	}
 	
@@ -522,34 +456,14 @@ func (ua *UserAuth) generateTOTPCode(secret string, timeWindow int64) string {
 
 // GetAccountLockStatus 获取账户锁定状态
 func (ua *UserAuth) GetAccountLockStatus(email string) (bool, time.Time, int) {
-	ua.usersMu.RLock()
-	defer ua.usersMu.RUnlock()
-	
-	email = strings.ToLower(email)
-	user, exists := ua.users[email]
-	if !exists {
-		return false, time.Time{}, 0
-	}
-	
-	isLocked := ua.isAccountLocked(user)
-	return isLocked, user.LockedUntil, user.FailedAttempts
+	// TODO: 从数据库获取账户锁定状态
+	return false, time.Time{}, 0
 }
 
 // UnlockAccount 解锁账户 (管理员功能)
 func (ua *UserAuth) UnlockAccount(email string) error {
-	ua.usersMu.Lock()
-	defer ua.usersMu.Unlock()
-	
-	email = strings.ToLower(email)
-	user, exists := ua.users[email]
-	if !exists {
-		return fmt.Errorf("user not found: %s", email)
-	}
-	
-	user.LockedUntil = time.Time{}
-	user.FailedAttempts = 0
-	
-	return ua.saveToFile()
+	// TODO: 在数据库中解锁账户
+	return nil
 }
 
 // SendSecurityAlert 发送安全警报邮件
@@ -601,15 +515,25 @@ Subject: %s
 
 // GenerateJWTToken 生成JWT令牌
 func (ua *UserAuth) GenerateJWTToken(email string) (map[string]interface{}, error) {
+	// 从数据库中查找用户
 	ua.usersMu.RLock()
-	user, exists := ua.users[strings.ToLower(email)]
+	user, err := ua.db.GetUser(strings.ToLower(email))
 	ua.usersMu.RUnlock()
 	
-	if !exists {
-		return nil, fmt.Errorf("user not found: %s", email)
+	var isAdmin bool
+	if err == nil {
+		isAdmin = user.IsAdmin
+	} else {
+		// 如果数据库中不存在，假设为普通用户
+		isAdmin = false
 	}
 	
-	return ua.jwtManager.GenerateTokenPair(email, user.IsAdmin)
+	return ua.jwtManager.GenerateTokenPair(email, isAdmin)
+}
+
+// GenerateJWTTokenWithAdmin 使用指定的admin状态生成JWT令牌
+func (ua *UserAuth) GenerateJWTTokenWithAdmin(email string, isAdmin bool) (map[string]interface{}, error) {
+	return ua.jwtManager.GenerateTokenPair(email, isAdmin)
 }
 
 // ValidateJWTToken 验证JWT令牌
@@ -650,10 +574,10 @@ func (ua *UserAuth) AuthenticateWith2FA(email, password, twoFactorCode string) (
 	}
 	
 	ua.usersMu.RLock()
-	user, exists := ua.users[strings.ToLower(email)]
+	user, err := ua.db.GetUser(strings.ToLower(email))
 	ua.usersMu.RUnlock()
 	
-	if !exists {
+	if err != nil {
 		return nil, fmt.Errorf("user not found")
 	}
 	

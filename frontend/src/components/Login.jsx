@@ -116,11 +116,11 @@ const Login = ({ onLoginSuccess }) => {
       onLoginSuccess(data);
     } catch (error) {
       // 处理不同类型的错误
-      if (error.message.includes('two-factor code required')) {
+      if (error.message.includes('2fa_required') || error.message.includes('two-factor code required')) {
         setRequires2FA(true);
         setStep(2);
         setError('请输入双因素认证码');
-      } else if (error.message.includes('invalid two-factor code')) {
+      } else if (error.message.includes('Invalid 2FA code') || error.message.includes('invalid two-factor code')) {
         setError('验证码错误，请重新输入');
       } else {
         // 记录登录失败
