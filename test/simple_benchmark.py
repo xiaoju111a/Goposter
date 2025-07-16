@@ -161,7 +161,7 @@ class SimpleBenchmark:
         
         for i in range(3):  # 减少邮件发送测试次数
             email_data = {
-                "from": "test@freeagent.live",
+                "from": "test@ygocard.org",
                 "to": "recipient@example.com",
                 "subject": f"基准测试邮件 {i+1}",
                 "body": f"这是第{i+1}封基准测试邮件\\n发送时间: {datetime.now().isoformat()}"

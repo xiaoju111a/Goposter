@@ -1,0 +1,50 @@
+IMAP性能测试报告
+测试时间: 2025-07-16 21:10:58
+目标服务器: localhost:143
+
+测试摘要:
+总测试数: 40
+成功测试: 40
+失败测试: 0
+
+详细结果:
+21:10:53 - IMAP Connection: 745.303µs (成功)
+21:10:53 - IMAP Connection: 443.509µs (成功)
+21:10:53 - IMAP Connection: 447.627µs (成功)
+21:10:53 - IMAP Connection: 804.714µs (成功)
+21:10:54 - IMAP Connection: 688.146µs (成功)
+21:10:54 - IMAP Connection: 488.994µs (成功)
+21:10:54 - IMAP Connection: 448.788µs (成功)
+21:10:54 - IMAP Connection: 446.675µs (成功)
+21:10:54 - IMAP Connection: 545.529µs (成功)
+21:10:54 - IMAP Connection: 642.219µs (成功)
+21:10:54 - IMAP Login: 802.82µs (成功)
+21:10:54 - IMAP Login: 720.667µs (成功)
+21:10:55 - IMAP Login: 907.245µs (成功)
+21:10:55 - IMAP Login: 722.019µs (成功)
+21:10:55 - IMAP Login: 956.768µs (成功)
+21:10:55 - IMAP Login: 2.901582ms (成功)
+21:10:55 - IMAP Login: 723.171µs (成功)
+21:10:56 - IMAP Login: 777.713µs (成功)
+21:10:56 - IMAP Login: 1.053509ms (成功)
+21:10:56 - IMAP Login: 705.157µs (成功)
+21:10:56 - IMAP List Folders: 1.345093ms (成功)
+21:10:56 - IMAP List Folders: 1.101598ms (成功)
+21:10:57 - IMAP List Folders: 1.047687ms (成功)
+21:10:57 - IMAP List Folders: 1.041557ms (成功)
+21:10:57 - IMAP List Folders: 1.063627ms (成功)
+21:10:57 - IMAP Select Inbox: 1.080479ms (成功)
+21:10:57 - IMAP Select Inbox: 1.108591ms (成功)
+21:10:58 - IMAP Select Inbox: 1.060021ms (成功)
+21:10:58 - IMAP Select Inbox: 877.169µs (成功)
+21:10:58 - IMAP Select Inbox: 1.03807ms (成功)
+21:10:58 - Concurrent IMAP Connection #7: 922.915µs (成功)
+21:10:58 - Concurrent IMAP Connection #3: 484.175µs (成功)
+21:10:58 - Concurrent IMAP Connection #5: 363.067µs (成功)
+21:10:58 - Concurrent IMAP Connection #9: 237.323µs (成功)
+21:10:58 - Concurrent IMAP Connection #2: 524.831µs (成功)
+21:10:58 - Concurrent IMAP Connection #8: 271.187µs (成功)
+21:10:58 - Concurrent IMAP Connection #1: 384.378µs (成功)
+21:10:58 - Concurrent IMAP Connection #4: 462.665µs (成功)
+21:10:58 - Concurrent IMAP Connection #6: 555.287µs (成功)
+21:10:58 - Concurrent IMAP Connection #10: 470.429µs (成功)

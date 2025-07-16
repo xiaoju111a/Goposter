@@ -167,7 +167,7 @@ func (i *IMAPTester) TestIMAPLogin(iterations int) {
 		}
 		
 		// 发送LOGIN命令
-		loginCmd := `LOGIN "admin@freeagent.live" "admin123"`
+		loginCmd := `LOGIN "admin@ygocard.org" "admin123"`
 		response, err := i.SendIMAPCommand(conn, loginCmd)
 		responseTime := time.Since(startTime)
 		
@@ -213,7 +213,7 @@ func (i *IMAPTester) TestIMAPListFolders(iterations int) {
 		}
 		
 		// 登录
-		loginCmd := `LOGIN "admin@freeagent.live" "admin123"`
+		loginCmd := `LOGIN "admin@ygocard.org" "admin123"`
 		_, err = i.SendIMAPCommand(conn, loginCmd)
 		if err != nil {
 			responseTime := time.Since(startTime)
@@ -269,7 +269,7 @@ func (i *IMAPTester) TestIMAPSelectInbox(iterations int) {
 		}
 		
 		// 登录
-		loginCmd := `LOGIN "admin@freeagent.live" "admin123"`
+		loginCmd := `LOGIN "admin@ygocard.org" "admin123"`
 		_, err = i.SendIMAPCommand(conn, loginCmd)
 		if err != nil {
 			responseTime := time.Since(startTime)

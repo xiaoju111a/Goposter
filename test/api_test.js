@@ -147,7 +147,7 @@ class APITester {
         
         for (let i = 0; i < iterations; i++) {
             const testEmail = {
-                from: 'test@freeagent.live',
+                from: 'test@ygocard.org',
                 to: 'recipient@example.com',
                 subject: `性能测试邮件 ${i + 1}`,
                 body: `这是第${i + 1}封性能测试邮件\\n发送时间: ${new Date().toISOString()}`
@@ -179,7 +179,7 @@ class APITester {
         
         for (let i = 0; i < iterations; i++) {
             const credentials = {
-                email: 'admin@freeagent.live',
+                email: 'admin@ygocard.org',
                 password: 'admin123'
             };
 

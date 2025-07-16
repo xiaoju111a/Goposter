@@ -1,0 +1,274 @@
+{
+  "timestamp": "2025-07-16T13:09:49.957Z",
+  "testResults": {
+    "tests": [
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 26,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.384Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 3,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.488Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.594Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.696Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.799Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:44.901Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.004Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.106Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.209Z"
+      },
+      {
+        "testName": "GET /api/mailboxes",
+        "success": false,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.311Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.415Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.617Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:45.821Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:46.023Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:46.225Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:46.428Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:46.630Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:46.833Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:47.035Z"
+      },
+      {
+        "testName": "POST /api/auth/login",
+        "success": true,
+        "responseTime": 3,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:47.238Z"
+      },
+      {
+        "testName": "POST /api/send",
+        "success": true,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:47.440Z"
+      },
+      {
+        "testName": "POST /api/send",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:47.942Z"
+      },
+      {
+        "testName": "POST /api/send",
+        "success": true,
+        "responseTime": 2,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:48.444Z"
+      },
+      {
+        "testName": "POST /api/send",
+        "success": true,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:48.946Z"
+      },
+      {
+        "testName": "POST /api/send",
+        "success": true,
+        "responseTime": 1,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.449Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #1",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #2",
+        "success": false,
+        "responseTime": 5,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #3",
+        "success": false,
+        "responseTime": 5,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #4",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #5",
+        "success": false,
+        "responseTime": 5,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #6",
+        "success": false,
+        "responseTime": 5,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #7",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #8",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #9",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      },
+      {
+        "testName": "Concurrent GET /api/mailboxes #10",
+        "success": false,
+        "responseTime": 4,
+        "error": null,
+        "timestamp": "2025-07-16T13:09:49.957Z"
+      }
+    ],
+    "summary": {
+      "totalRequests": 35,
+      "successfulRequests": 15,
+      "failedRequests": 20,
+      "averageResponseTime": 3.257142857142857,
+      "minResponseTime": 1,
+      "maxResponseTime": 26,
+      "successRate": 42.857142857142854,
+      "throughput": 6.280279921047909
+    }
+  },
+  "systemInfo": {
+    "nodeVersion": "v18.20.4",
+    "platform": "linux",
+    "arch": "x64",
+    "memory": {
+      "rss": 47947776,
+      "heapTotal": 8679424,
+      "heapUsed": 6304504,
+      "external": 1907387,
+      "arrayBuffers": 40011
+    }
+  }
+}
