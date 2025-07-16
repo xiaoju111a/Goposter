@@ -68,25 +68,22 @@
     cd mail
     ```
 
-2.  **编译应用程序**
+2.  **编译并启动后端服务器**
     ```bash
+    cd backend
     go build -o mailserver .
-    ```
-
-3.  **启动邮件服务器**
-    ```bash
     # 格式: ./mailserver [域名] [主机] [SMTP端口] [IMAP端口] [Web端口]
     sudo ./mailserver ygocard.org localhost 25 143 9090
     ```
 
-4.  **启动前端服务器**
+3.  **启动前端服务器**
     ```bash
-    cd frontend
+    cd ../frontend
     npm install
     npm run dev -- --port 8080 --host 0.0.0.0
     ```
 
-5.  **访问界面**
+4.  **访问界面**
     - **前端界面:** `http://localhost:8080`
     - **后端 API:** `http://localhost:9090`
 
@@ -96,19 +93,24 @@
 
 ## 🏭 生产环境部署
 
-1.  **启动 Redis (推荐)**
+1.  **进入后端目录**
+    ```bash
+    cd backend
+    ```
+
+2.  **启动 Redis (推荐)**
     ```bash
     sudo systemctl start redis
     sudo systemctl enable redis
     ```
 
-2.  **编译应用程序**
+3.  **编译应用程序**
     ```bash
-    # 此命令会在当前目录生成一个名为 mailserver 的可执行文件
+    # 此命令会在 backend 目录生成一个名为 mailserver 的可执行文件
     go build -o mailserver .
     ```
 
-3.  **启动邮件服务器**
+4.  **启动邮件服务器**
     > 需要 `sudo` 权限以监听低位端口 (25, 143)。
 
     ```bash
@@ -117,32 +119,28 @@
     sudo ./mailserver ygocard.org mail.ygocard.org 25 143 9090
     ```
 
-4.  **后台持久化运行 (推荐)**
+5.  **后台持久化运行 (推荐)**
     ```bash
     nohup sudo ./mailserver ygocard.org localhost 25 143 9090 > server.log 2>&1 &
     ```
 
 ## 📁 项目结构
 
-项目采用扁平化的结构，所有 Go 源代码文件均位于根目录，并作为单个 `main` 包进行编译。
+项目采用模块化的结构，后端和前端代码分离。
 
 ```
 /
-├── go.mod            # Go 模块依赖
-├── main.go           # 主程序入口和 Web 服务器
-├── auth.go           # 认证逻辑
-├── database.go       # 数据库操作
-├── smtp_sender.go    # SMTP 邮件发送
-├── email_parser.go   # 邮件解析
-├── ...               # 其他核心 Go 源文件
+├── backend/          # Go 后端应用
+│   ├── data/         # 运行时数据 (数据库, 邮件)
+│   ├── go.mod        # Go 模块依赖
+│   ├── main.go       # 主程序入口
+│   ├── ...           # 其他核心 Go 源文件
+│   └── mailserver    # 编译后的可执行文件
 ├── frontend/         # React 前端应用
 │   ├── src/
-│   │   ├── components/
-│   │   └── utils/
-│   └── dist/         # 前端构建产物
-├── data/             # 运行时数据 (数据库, 邮件)
+│   └── ...
 ├── docs/             # 项目详细文档
-└── test/             # 测试脚本
+└── benchmark/        # 性能测试脚本
 ```
 
 ## 🌐 DNS 配置
