@@ -234,86 +234,7 @@ YgoCard Mail API 使用 **JWT (JSON Web Tokens)** 进行认证。所有需要认
 
 ---
 
-### **2.5 别名管理 (Alias Management)**
-
-#### **`GET /api/aliases`**
-
-获取当前用户的所有邮箱别名。
-
-- **认证:** 需要 (Bearer Token)
-- **成功响应 (200 OK):**
-  ```json
-  [
-    {
-      "alias": "support@ygocard.org",
-      "destination": "user@ygocard.org"
-    }
-  ]
-  ```
-
-#### **`POST /api/aliases`**
-
-创建一个新的邮箱别名。
-
-- **认证:** 需要 (Bearer Token)
-- **请求体 (Request Body):**
-  ```json
-  {
-    "alias": "sales@ygocard.org",
-    "destination": "user@ygocard.org"
-  }
-  ```
-- **成功响应 (201 Created):**
-  ```json
-  {
-    "status": "success",
-    "message": "别名创建成功"
-  }
-  ```
-
-#### **`DELETE /api/aliases`**
-
-删除一个邮箱别名。
-
-- **认证:** 需要 (Bearer Token)
-- **查询参数 (Query Parameters):**
-  - `alias`: 要删除的别名地址。
-- **成功响应 (200 OK):**
-  ```json
-  {
-    "status": "success",
-    "message": "别名已删除"
-  }
-  ```
-
----
-
-## 3. WebSocket API
-
-YgoCard Mail 使用 WebSocket 提供实时通知功能，例如新邮件到达、邮件状态变更等。
-
-#### **`GET /ws`**
-
-建立一个 WebSocket 连接。
-
-- **认证:** 需要 (Bearer Token)
-- **连接 URL:** `wss://your_domain.com/ws?token=<YOUR_JWT_TOKEN>`
-- **接收消息格式:**
-  ```json
-  {
-    "event": "new_email", // 事件类型: new_email, email_read, etc.
-    "data": {
-      "mailbox": "INBOX",
-      "email_id": "1678886401.1.1",
-      "from": "another@example.com",
-      "subject": "紧急通知"
-    }
-  }
-  ```
-
----
-
-## 4. 管理员端点 (Admin Endpoints)
+## 3. 管理员端点 (Admin Endpoints)
 
 以下端点需要管理员权限。
 
@@ -323,8 +244,3 @@ YgoCard Mail 使用 WebSocket 提供实时通知功能，例如新邮件到达�
 #### **`POST /api/admin/users`**
 创建一个新用户。
 
-#### **`GET /api/admin/settings`**
-获取系统配置。
-
-#### **`POST /api/admin/settings`**
-更新系统配置。
