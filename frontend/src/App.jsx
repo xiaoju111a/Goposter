@@ -189,13 +189,15 @@ const App = () => {
                         <span className="nav-icon">📤</span>
                         <span className="nav-text">发送邮件</span>
                     </button>
-                    <button 
-                        className={`nav-item ${activeTab === 'create' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('create')}
-                    >
-                        <span className="nav-icon">➕</span>
-                        <span className="nav-text">创建邮箱</span>
-                    </button>
+                    {currentUser?.isAdmin && (
+                        <button 
+                            className={`nav-item ${activeTab === 'create' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('create')}
+                        >
+                            <span className="nav-icon">➕</span>
+                            <span className="nav-text">创建邮箱</span>
+                        </button>
+                    )}
                     <button 
                         className={`nav-item ${activeTab === 'security' ? 'active' : ''}`}
                         onClick={() => setActiveTab('security')}
@@ -216,7 +218,7 @@ const App = () => {
                     <div className="user-profile">
                         <div className="user-avatar">👤</div>
                         <div className="user-details">
-                            <div className="user-name">管理员</div>
+                            <div className="user-name">{currentUser?.isAdmin ? '管理员' : '用户'}</div>
                             <div className="user-email">{currentUser?.email}</div>
                         </div>
                     </div>
@@ -232,7 +234,7 @@ const App = () => {
                     <div className="page-title">
                         {activeTab === 'mailboxes' && '📮 邮箱管理'}
                         {activeTab === 'send' && '📤 发送邮件'}
-                        {activeTab === 'create' && '➕ 创建邮箱'}
+                        {activeTab === 'create' && currentUser?.isAdmin && '➕ 创建邮箱'}
                         {activeTab === 'security' && '🔒 安全设置'}
                         {activeTab === 'forwarding' && '📧 转发设置'}
                     </div>
@@ -400,7 +402,7 @@ const App = () => {
                     )}
                     
 
-                    {activeTab === 'create' && (
+                    {activeTab === 'create' && currentUser?.isAdmin && (
                         <CreateMailbox onMailboxCreated={handleMailboxCreated} />
                     )}
 
