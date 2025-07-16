@@ -1,197 +1,85 @@
-# 🎮 YgoCard.org 域名解析配置完整教程
+# 域名设置指南
 
-## 📋 前置条件
+要使您的 YgoCard Mail 服务器能够正确接收来自互联网的邮件，必须正确配置您域名的 DNS 记录。本文档提供了必要的配置步骤和验证方法。
 
-1. **拥有 ygocard.org 域名** (从域名注册商购买)
-2. **云服务器/VPS** 已准备好并获得公网IP
-3. **具备域名DNS管理权限**
+---
 
-## 🌐 域名解析详细步骤
+## 1. 核心 DNS 记录
 
-### 步骤1: 登录域名管理控制台
+您需要在您的域名注册商（如 GoDaddy, Cloudflare, 阿里云等）的管理面板中，为您的域名（本文以 `ygocard.org` 为例）添加以下四条核心 DNS 记录。
 
-根据你的域名注册商，登录对应的控制台：
+| 类型  | 名称 (Host/Name)           | 值 / 目标 (Value/Target)     | 优先级 (Priority) |
+| :---- | :------------------------- | :--------------------------- | :---------------- |
+| **A** | `mail`                     | `[你的服务器公网IP]`         | -                 |
+| **MX**| `@` 或 `ygocard.org`       | `mail.ygocard.org`           | 10                |
+| **TXT**| `@` 或 `ygocard.org`       | `"v=spf1 a mx ~all"`         | -                 |
+| **TXT**| `default._domainkey`       | `"v=DKIM1; k=rsa; p=[你的公钥]"` | -                 |
 
-#### 常见域名注册商
-- **阿里云 (万网)**: https://dns.console.aliyun.com
-- **腾讯云 DNSPod**: https://console.dnspod.cn
-- **GoDaddy**: https://dcc.godaddy.com/manage/dns
-- **Namecheap**: https://ap.www.namecheap.com/domains/list
-- **Cloudflare**: https://dash.cloudflare.com
+### **记录说明:**
 
-### 步骤2: 添加DNS记录
+-   **A 记录:** 将 `mail.ygocard.org` 这个子域名指向您服务器的公网 IP 地址。这是邮件服务器的地址。
+-   **MX 记录:** 告诉其他邮件服务器，所有发送到 `@ygocard.org` 后缀的邮件��都应该被投递到 `mail.ygocard.org` 这台服务器上。优先级 `10` 是一个标准值。
+-   **TXT (SPF) 记录:** 发件人策略框架 (SPF) 是一种邮件认证标准，用于防止他人伪造您的域名发送垃圾邮件。此记录声明了只有您的服务器 (`a` 和 `mx` 记录指向的地址)才有权为您的域名发送邮件。
+-   **TXT (DKIM) 记录:** 域名密钥识别邮件 (DKIM) 为您的外发邮件添加数字签名，收件方服务器可以通过查询此 DNS 记录中的公钥来验证邮件的真实性和完整性，确保邮件未被篡改。
+    -   `[你的公钥]` 部分需要替换为您在 YgoCard Mail 中生成的 DKIM 公钥。
 
-在DNS管理页面，添加以下记录：
+> 📚 **关于 SPF 和 DKIM 的更详细信息，请参阅 [邮件认证指南](./DNS-EMAIL-AUTH-GUIDE.md)。**
 
-#### 2.1 A记录 (必需)
-```
-记录类型: A
-主机记录: mail
-记录值: [你的服务器公网IP]
-TTL: 600 (10分钟)
-```
+---
 
-**示例**:
-- 主机记录: `mail`
-- 记录值: `1.2.3.4` (替换为你的实际IP)
-- 完整域名: `mail.ygocard.org`
+## 2. 如何验证 DNS 配置
 
-#### 2.2 MX记录 (必需)
-```
-记录类型: MX
-主机记录: @
-记录值: mail.ygocard.org
-优先级: 10
-TTL: 600
-```
+在您添加或修改 DNS 记录后，通常需要一些时间才能全球生效（从几分钟到几小时不等）。您可以使用以下命令来验证您的配置是否正确。
 
-**说明**: MX记录告诉邮件系统，发送到 `@ygocard.org` 的邮件应该投递到 `mail.ygocard.org`
-
-#### 2.3 TXT记录 - SPF (推荐)
-```
-记录类型: TXT
-主机记录: @
-记录值: "v=spf1 a mx ~all"
-TTL: 600
-```
-
-**说明**: SPF记录防止邮件被标记为垃圾邮件
-
-## 🔍 DNS配置验证
-
-配置完成后，使用以下命令验证：
-
-### 检查A记录
+### **验证 A 记录**
 ```bash
-# Windows
-nslookup mail.ygocard.org
-
-# Linux/Mac
-dig A mail.ygocard.org
+# 在 Linux/macOS/Windows WSL 中运行
+dig A mail.ygocard.org +short
+```
+**预期输出:**
+```
+[你的服务器公网IP]
 ```
 
-**期望结果**:
-```
-mail.ygocard.org.    600    IN    A    1.2.3.4
-```
-
-### 检查MX记录
+### **验证 MX 记录**
 ```bash
-# Windows
-nslookup -type=MX ygocard.org
-
-# Linux/Mac
-dig MX ygocard.org
+dig MX ygocard.org +short
+```
+**预期输出:**
+```
+10 mail.ygocard.org.
 ```
 
-**期望结果**:
-```
-ygocard.org.    600    IN    MX    10 mail.ygocard.org.
-```
-
-### 检查SPF记录
+### **验证 SPF (TXT) 记录**
 ```bash
-# Windows
-nslookup -type=TXT ygocard.org
-
-# Linux/Mac
-dig TXT ygocard.org
+dig TXT ygocard.org +short
+```
+**预期输出:**
+```
+"v=spf1 a mx ~all"
 ```
 
-**期望结果**:
+### **验证 DKIM (TXT) 记录**
+```bash
+dig TXT default._domainkey.ygocard.org +short
 ```
-ygocard.org.    600    IN    TXT    "v=spf1 a mx ~all"
+**预期输出:**
 ```
-
-## ⏰ DNS生效时间
-
-- **本地生效**: 10分钟-2小时
-- **全球生效**: 2-24小时
-- **完全传播**: 最多48小时
-
-## 🖥️ 不同注册商的具体操作
-
-### 阿里云 (万网)
-1. 登录 [阿里云DNS控制台](https://dns.console.aliyun.com)
-2. 找到 `ygocard.org` 域名，点击"解析设置"
-3. 点击"添加记录"
-4. 依次添加A记录、MX记录、TXT记录
-
-### 腾讯云 DNSPod
-1. 登录 [DNSPod控制台](https://console.dnspod.cn)
-2. 找到 `ygocard.org`，点击域名进入解析页面
-3. 点击"添加记录"
-4. 选择记录类型并填写相应信息
-
-### GoDaddy
-1. 登录 [GoDaddy管理中心](https://dcc.godaddy.com)
-2. 点击"DNS" → "Manage Zones"
-3. 找到 `ygocard.org`，点击DNS图标
-4. 添加相应的DNS记录
-
-### Cloudflare
-1. 登录 [Cloudflare控制台](https://dash.cloudflare.com)
-2. 选择 `ygocard.org` 域名
-3. 进入"DNS"标签页
-4. 点击"Add record"添加记录
-
-## 🔧 常见配置问题
-
-### 问题1: DNS不生效
-**解决方案**:
-- 等待更长时间 (最多48小时)
-- 清除本地DNS缓存
-- 使用不同的DNS查询工具验证
-
-### 问题2: MX记录配置错误
-**检查项**:
-- 主机记录应该是 `@` 而不是空
-- 记录值应该是 `mail.ygocard.org` (有结尾的点更好)
-- 优先级设置为10
-
-### 问题3: A记录指向错误
-**检查项**:
-- 确认服务器IP地址正确
-- 确认IP是公网IP而不是内网IP
-- 测试IP能否正常访问
-
-## 📱 移动端DNS管理
-
-大部分域名注册商都提供手机App：
-- **阿里云**: 阿里云App
-- **腾讯云**: 腾讯云助手
-- **GoDaddy**: GoDaddy Mobile
-
-## 🛠️ 高级配置 (可选)
-
-### DKIM记录
-```
-记录类型: TXT
-主机记录: default._domainkey
-记录值: "v=DKIM1; k=rsa; p=公钥内容..."
+"v=DKIM1; k=rsa; p=[你的公钥]"
 ```
 
-### DMARC记录
-```
-记录类型: TXT
-主机记录: _dmarc
-记录值: "v=DMARC1; p=none; rua=mailto:dmarc@ygocard.org"
-```
+---
 
-### CAA记录
-```
-记录类型: CAA
-主机记录: @
-记录值: 0 issue "letsencrypt.org"
-```
+## 3. 常见问题
 
-## ✅ 配置检查清单
+-   **为什么我收不到邮件?**
+    -   最常见的原因是 **MX 记录** 配置错误或尚未生效。请使用 `dig` 命令仔细检查。
+    -   确保您的服务器防火墙已放行 SMTP 端口 (通常是 25, 465, 587)。
 
-- [ ] A记录: `mail.ygocard.org` → 服务器IP
-- [ ] MX记录: `ygocard.org` → `mail.ygocard.org`
-- [ ] TXT记录: SPF配置
-- [ ] DNS生效验证
-- [ ] 服务器端口开放确认
-- [ ] 邮箱服务器启动测试
+-   **为什么我发送的邮件被标记为垃圾邮件?**
+    -   检查您的 **SPF** 和 **DKIM** 记录是否正确配置。这两条记录对于建立域名信誉至关重要。
+    -   确保您的服务器 IP 没有被列入常见的垃圾邮件黑名单 (RBL)。
 
-完成以上配置后，全球任何邮箱都可以发送邮件到 `任意名称@ygocard.org`！
+-   **`@` 和 `mail` 代表什么?**
+    -   在 DNS 配置中, `@` 通常是您根域名 (`ygocard.org`) 的简写。
+    -   `mail` 是一个子域名，所以完整的地址是 `mail.ygocard.org`。
