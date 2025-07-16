@@ -63,11 +63,26 @@ export const auth = {
     const userEmail = localStorage.getItem('userEmail');
     const expiresAt = localStorage.getItem('token_expires_at');
     
+    // 尝试从JWT token中获取admin状态
+    let isAdmin = false;
+    if (accessToken) {
+      try {
+        const parts = accessToken.split('.');
+        if (parts.length === 3) {
+          // JWT format
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          isAdmin = payload.is_admin || false;
+        }
+      } catch (error) {
+        console.warn('Failed to decode JWT token:', error);
+      }
+    }
+    
     return {
       accessToken,
       email: userEmail,
       username: userEmail?.split('@')[0] || '',
-      isAdmin: false, // 将通过异步方法检查
+      isAdmin: isAdmin,
       exp: expiresAt ? parseInt(expiresAt) / 1000 : null,
       iat: null
     };

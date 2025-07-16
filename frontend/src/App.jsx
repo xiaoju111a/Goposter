@@ -27,7 +27,10 @@ const App = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     const [activeTab, setActiveTab] = useState('mailboxes'); // 'mailboxes', 'send', 'create', 'stats', 'security', 'forwarding'
     const [isAuthenticated, setIsAuthenticated] = useState(auth.isAuthenticated());
-    const [currentUser, setCurrentUser] = useState(auth.getCurrentUser());
+    const [currentUser, setCurrentUser] = useState(() => {
+        // 确保在初始化时正确获取用户信息
+        return auth.isAuthenticated() ? auth.getCurrentUser() : null;
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMailboxes, setSelectedMailboxes] = useState([]);
     const [currentMailbox, setCurrentMailbox] = useState(null); // 当前查看的邮箱
@@ -78,13 +81,15 @@ const App = () => {
     useEffect(() => {
         const unsubscribe = authListener.addListener((authenticated, user) => {
             setIsAuthenticated(authenticated);
-            setCurrentUser(user);
-            
             if (authenticated) {
+                // 登录成功后，重新获取用户信息确保isAdmin状态正确
+                const currentUser = auth.getCurrentUser();
+                setCurrentUser(currentUser);
                 // 登录成功后加载数据
                 loadMailboxes();
             } else {
                 // 登出后清除数据
+                setCurrentUser(null);
                 setMailboxes([]);
                 cacheManager.clear();
             }
@@ -290,8 +295,8 @@ const App = () => {
                                         filteredCount={filteredMailboxes.length}
                                     />
                                     
-                                    {/* 批量操作 */}
-                                    {selectedMailboxes.length > 0 && (
+                                    {/* 批量操作 - 只有管理员才能看到删除操作 */}
+                                    {selectedMailboxes.length > 0 && currentUser?.isAdmin && (
                                         <MailboxBatchOperations
                                             selectedMailboxes={selectedMailboxes}
                                             onClearSelection={() => setSelectedMailboxes([])}

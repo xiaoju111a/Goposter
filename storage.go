@@ -1,32 +1,25 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
 type EmailStorage struct {
 	dataDir string
 	emails  map[string][]Email
 	emailsMu sync.RWMutex
+	database *Database
 }
 
-type StoredEmail struct {
-	Email
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Flags     []string  `json:"flags"`
-}
 
-func NewEmailStorage(dataDir string) *EmailStorage {
+func NewEmailStorage(dataDir string, database *Database) *EmailStorage {
 	es := &EmailStorage{
 		dataDir: dataDir,
 		emails:  make(map[string][]Email),
+		database: database,
 	}
 	
 	// 创建数据目录
@@ -49,62 +42,81 @@ func (es *EmailStorage) AddEmail(to string, email Email) error {
 	to = strings.ToLower(to)
 	es.emails[to] = append(es.emails[to], email)
 	
-	// 持久化到文件
-	return es.saveEmailToFile(to, email)
+	// 持久化到数据库
+	return es.database.SaveEmail(to, email.From, email.To, email.Subject, email.Body, "")
 }
 
 // GetEmails 获取邮箱的所有邮件
 func (es *EmailStorage) GetEmails(mailbox string) []Email {
-	es.emailsMu.RLock()
-	defer es.emailsMu.RUnlock()
-	
 	mailbox = strings.ToLower(mailbox)
-	if emails, exists := es.emails[mailbox]; exists {
-		// 返回副本，避免并发修改
-		result := make([]Email, len(emails))
-		copy(result, emails)
-		return result
+	
+	// 从数据库获取邮件
+	emailsDB, err := es.database.GetEmails(mailbox)
+	if err != nil {
+		fmt.Printf("Warning: Failed to get emails from database: %v\n", err)
+		return []Email{}
 	}
 	
-	return []Email{}
+	// 转换为 Email 结构
+	var emails []Email
+	for _, emailDB := range emailsDB {
+		email := Email{
+			ID:      fmt.Sprintf("%d", emailDB.ID),
+			From:    emailDB.From,
+			To:      emailDB.To,
+			Subject: emailDB.Subject,
+			Body:    emailDB.Body,
+			Date:    emailDB.Received.Format("2006-01-02 15:04:05"),
+			Headers: make(map[string]string),
+		}
+		emails = append(emails, email)
+	}
+	
+	return emails
 }
 
 // GetAllMailboxes 获取所有邮箱列表
 func (es *EmailStorage) GetAllMailboxes() []string {
-	es.emailsMu.RLock()
-	defer es.emailsMu.RUnlock()
-	
-	var mailboxes []string
-	for mailbox := range es.emails {
-		mailboxes = append(mailboxes, mailbox)
+	mailboxes, err := es.database.GetAllMailboxNames()
+	if err != nil {
+		fmt.Printf("Warning: Failed to get mailboxes from database: %v\n", err)
+		return []string{}
 	}
 	return mailboxes
 }
 
 // DeleteEmail 删除指定ID的邮件
 func (es *EmailStorage) DeleteEmail(mailbox string, emailID string) bool {
-	es.emailsMu.Lock()
-	defer es.emailsMu.Unlock()
-	
 	mailbox = strings.ToLower(mailbox)
-	emails, exists := es.emails[mailbox]
-	if !exists {
+	
+	// 转换emailID为整数
+	var id int
+	if _, err := fmt.Sscanf(emailID, "%d", &id); err != nil {
 		return false
 	}
 	
-	// 查找并删除指定ID的邮件
-	for i, email := range emails {
-		if email.ID == emailID {
-			// 从内存中删除
-			es.emails[mailbox] = append(emails[:i], emails[i+1:]...)
-			
-			// 重新保存整个邮箱
-			err := es.saveMailboxToFile(mailbox)
-			return err == nil
+	// 从数据库删除
+	err := es.database.DeleteEmail(mailbox, id)
+	if err != nil {
+		fmt.Printf("Warning: Failed to delete email from database: %v\n", err)
+		return false
+	}
+	
+	// 从内存中删除
+	es.emailsMu.Lock()
+	defer es.emailsMu.Unlock()
+	
+	emails, exists := es.emails[mailbox]
+	if exists {
+		for i, email := range emails {
+			if email.ID == emailID {
+				es.emails[mailbox] = append(emails[:i], emails[i+1:]...)
+				break
+			}
 		}
 	}
 	
-	return false // 未找到指定ID的邮件
+	return true
 }
 
 // DeleteMailbox 删除整个邮箱
@@ -117,21 +129,18 @@ func (es *EmailStorage) DeleteMailbox(mailbox string) error {
 	// 从内存中删除
 	delete(es.emails, mailbox)
 	
-	// 删除文件
-	filename := es.getMailboxFilename(mailbox)
-	return os.Remove(filename)
+	// 这里可以添加从数据库删除所有邮件的逻辑，但应该由上层代码处理
+	return nil
 }
 
 // GetEmailCount 获取邮箱邮件数量
 func (es *EmailStorage) GetEmailCount(mailbox string) int {
-	es.emailsMu.RLock()
-	defer es.emailsMu.RUnlock()
-	
 	mailbox = strings.ToLower(mailbox)
-	if emails, exists := es.emails[mailbox]; exists {
-		return len(emails)
+	emails, err := es.database.GetEmails(mailbox)
+	if err != nil {
+		return 0
 	}
-	return 0
+	return len(emails)
 }
 
 // GetTotalEmailCount 获取总邮件数量
@@ -174,23 +183,32 @@ func (es *EmailStorage) GetStorageStats() map[string]interface{} {
 
 // SearchEmails 搜索邮件
 func (es *EmailStorage) SearchEmails(mailbox, keyword string) []Email {
-	es.emailsMu.RLock()
-	defer es.emailsMu.RUnlock()
-	
 	mailbox = strings.ToLower(mailbox)
-	emails, exists := es.emails[mailbox]
-	if !exists {
+	
+	// 从数据库获取邮件
+	emailsDB, err := es.database.GetEmails(mailbox)
+	if err != nil {
 		return []Email{}
 	}
 	
 	var results []Email
 	keyword = strings.ToLower(keyword)
 	
-	for _, email := range emails {
+	for _, emailDB := range emailsDB {
 		// 搜索主题、正文、发件人
-		if strings.Contains(strings.ToLower(email.Subject), keyword) ||
-		   strings.Contains(strings.ToLower(email.Body), keyword) ||
-		   strings.Contains(strings.ToLower(email.From), keyword) {
+		if strings.Contains(strings.ToLower(emailDB.Subject), keyword) ||
+		   strings.Contains(strings.ToLower(emailDB.Body), keyword) ||
+		   strings.Contains(strings.ToLower(emailDB.From), keyword) {
+			
+			email := Email{
+				ID:      fmt.Sprintf("%d", emailDB.ID),
+				From:    emailDB.From,
+				To:      emailDB.To,
+				Subject: emailDB.Subject,
+				Body:    emailDB.Body,
+				Date:    emailDB.Received.Format("2006-01-02 15:04:05"),
+				Headers: make(map[string]string),
+			}
 			results = append(results, email)
 		}
 	}
@@ -200,134 +218,33 @@ func (es *EmailStorage) SearchEmails(mailbox, keyword string) []Email {
 
 // BackupData 备份数据
 func (es *EmailStorage) BackupData(backupDir string) error {
-	es.emailsMu.RLock()
-	defer es.emailsMu.RUnlock()
-	
-	// 创建备份目录
-	timestamp := time.Now().Format("20060102_150405")
-	fullBackupDir := filepath.Join(backupDir, "backup_"+timestamp)
-	
-	if err := os.MkdirAll(fullBackupDir, 0755); err != nil {
-		return fmt.Errorf("failed to create backup directory: %v", err)
-	}
-	
-	// 备份每个邮箱
-	for mailbox := range es.emails {
-		srcFile := es.getMailboxFilename(mailbox)
-		dstFile := filepath.Join(fullBackupDir, filepath.Base(srcFile))
-		
-		if err := es.copyFile(srcFile, dstFile); err != nil {
-			return fmt.Errorf("failed to backup mailbox %s: %v", mailbox, err)
-		}
-	}
-	
-	fmt.Printf("Data backed up to: %s\n", fullBackupDir)
+	// 备份功能应该直接备份SQLite数据库文件
+	// 这里只做一个简单的占位实现
+	fmt.Printf("Backup functionality should backup the SQLite database directly\n")
 	return nil
 }
 
-// saveEmailToFile 保存单个邮件到文件
-func (es *EmailStorage) saveEmailToFile(mailbox string, email Email) error {
-	return es.saveMailboxToFile(mailbox)
-}
 
-// saveMailboxToFile 保存整个邮箱到文件
-func (es *EmailStorage) saveMailboxToFile(mailbox string) error {
-	filename := es.getMailboxFilename(mailbox)
-	
-	emails := es.emails[mailbox]
-	if emails == nil {
-		emails = []Email{}
-	}
-	
-	// 转换为存储格式
-	storedEmails := make([]StoredEmail, len(emails))
-	for i, email := range emails {
-		storedEmails[i] = StoredEmail{
-			Email:     email,
-			ID:        email.ID, // 保持原有ID，不重新生成
-			Timestamp: time.Now(),
-			Flags:     []string{},
-		}
-	}
-	
-	data, err := json.MarshalIndent(storedEmails, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal emails: %v", err)
-	}
-	
-	return os.WriteFile(filename, data, 0644)
-}
 
-// loadEmails 从文件加载所有邮件
+// loadEmails 从数据库加载邮件到内存缓存
 func (es *EmailStorage) loadEmails() {
-	if es.dataDir == "" {
+	if es.database == nil {
 		return
 	}
 	
-	// 读取数据目录中的所有邮箱文件
-	files, err := filepath.Glob(filepath.Join(es.dataDir, "mailbox_*.json"))
+	// 获取所有邮箱名称
+	mailboxes, err := es.database.GetAllMailboxNames()
 	if err != nil {
-		fmt.Printf("Warning: Failed to load emails: %v\n", err)
+		fmt.Printf("Warning: Failed to load mailboxes: %v\n", err)
 		return
 	}
 	
-	for _, filename := range files {
-		es.loadMailboxFromFile(filename)
+	// 为每个邮箱加载邮件到内存缓存
+	for _, mailbox := range mailboxes {
+		emails := es.GetEmails(mailbox)
+		es.emails[mailbox] = emails
 	}
 }
 
-// loadMailboxFromFile 从文件加载邮箱
-func (es *EmailStorage) loadMailboxFromFile(filename string) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return
-	}
-	
-	var storedEmails []StoredEmail
-	if err := json.Unmarshal(data, &storedEmails); err != nil {
-		fmt.Printf("Warning: Failed to parse mailbox file %s: %v\n", filename, err)
-		return
-	}
-	
-	// 从文件名提取邮箱名
-	base := filepath.Base(filename)
-	if !strings.HasPrefix(base, "mailbox_") || !strings.HasSuffix(base, ".json") {
-		return
-	}
-	
-	safeName := base[8 : len(base)-5] // 移除 "mailbox_" 前缀和 ".json" 后缀
-	
-	// 反向转换文件名为邮箱地址
-	mailbox := strings.ReplaceAll(safeName, "_at_", "@")
-	mailbox = strings.ReplaceAll(mailbox, "_dot_", ".")
-	
-	// 转换为普通邮件格式
-	emails := make([]Email, len(storedEmails))
-	for i, stored := range storedEmails {
-		email := stored.Email
-		// 如果StoredEmail有ID，使用它；否则使用Email的ID
-		if stored.ID != "" {
-			email.ID = stored.ID
-		}
-		emails[i] = email
-	}
-	
-	es.emails[mailbox] = emails
-}
 
-// getMailboxFilename 获取邮箱文件路径
-func (es *EmailStorage) getMailboxFilename(mailbox string) string {
-	// 替换特殊字符，确保文件名安全
-	safeName := strings.ReplaceAll(mailbox, "@", "_at_")
-	safeName = strings.ReplaceAll(safeName, ".", "_dot_")
-	return filepath.Join(es.dataDir, "mailbox_"+safeName+".json")
-}
 
-// copyFile 复制文件
-func (es *EmailStorage) copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, 0644)
-}

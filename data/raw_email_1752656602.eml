@@ -1,0 +1,10 @@
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+From: admin@ygocard.org
+To: noreply@ygocard.org
+Subject: 特殊他
+Date: Wed, 16 Jul 2025 17:03:22 +0800
+Message-ID: <1752656602@ygocard.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=ygocard.org; s=default; t=1752656602; h=from:to:subject:date; b=J6igmceNIbCoyITHo/AfThz8j7ZBEfJqCcYvOMJIWnDzoXCof+OYZ6tg/R2nr2jj6FWR5xw4zHFXZLK0FuCkCj8y7Gmfrkmy/DEbUT3ULEZ7znY0jEp5bJuXBdRmO+EYR9kPwa5im2Dmc08qV5UjnPpRX1GvYDTUTJ7zIjczShuqTyLzSqipL1nU6F6cVMZX/vMZNAL/w0bSWFBlg3kS3VQnmyWVRMHUf+VQI130wmxl+OGnCfFDBBhNKseuhpdNkh0BW9sWojYOb2b2NDfjVuQHs487oZeGLOGLhY6P2aP4pbfJVIpANxrjXRBli7C70XrowE/tje15y/+TpcgMfg==
+
+特色tt

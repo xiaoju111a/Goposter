@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -13,7 +11,7 @@ type MailboxManager struct {
 	mailboxes map[string]*Mailbox
 	domain    string
 	mu        sync.RWMutex
-	filename  string
+	database  *Database
 }
 
 type Mailbox struct {
@@ -29,17 +27,14 @@ type Mailbox struct {
 	KeepOriginal    bool   `json:"keep_original"`   // 是否保留原邮件
 }
 
-type MailboxConfig struct {
-	Mailboxes map[string]*Mailbox `json:"mailboxes"`
-}
 
-func NewMailboxManager(domain, filename string) *MailboxManager {
+func NewMailboxManager(domain string, database *Database) *MailboxManager {
 	mm := &MailboxManager{
 		mailboxes: make(map[string]*Mailbox),
 		domain:    domain,
-		filename:  filename,
+		database:  database,
 	}
-	mm.loadFromFile()
+	mm.loadFromDatabase()
 	mm.ensureDefaultMailboxes()
 	return mm
 }
@@ -77,7 +72,7 @@ func (mm *MailboxManager) CreateMailbox(email, password, description, owner stri
 	}
 
 	mm.mailboxes[email] = mailbox
-	return mm.saveToFile()
+	return mm.saveToDatabase(email)
 }
 
 // DeleteMailbox 删除邮箱
@@ -90,7 +85,7 @@ func (mm *MailboxManager) DeleteMailbox(email string) error {
 	}
 
 	delete(mm.mailboxes, email)
-	return mm.saveToFile()
+	return mm.database.DeleteMailbox(email)
 }
 
 // UpdateMailbox 更新邮箱信息
@@ -109,7 +104,7 @@ func (mm *MailboxManager) UpdateMailbox(email, password, description string, isA
 	mailbox.Description = description
 	mailbox.IsActive = isActive
 
-	return mm.saveToFile()
+	return mm.saveToDatabase(email)
 }
 
 // GetMailbox 获取邮箱信息
@@ -160,7 +155,8 @@ func (mm *MailboxManager) AuthenticateMailbox(email, password string) bool {
 		return false
 	}
 
-	return mailbox.Password == password
+	// Use database validation for secure password check
+	return mm.database.ValidateMailboxCredentials(email, password)
 }
 
 // GetMailboxesByDomain 获取指定域名的所有邮箱
@@ -220,6 +216,7 @@ func (mm *MailboxManager) ensureDefaultMailboxes() {
 	for _, def := range defaultMailboxes {
 		email := def.username + "@" + mm.domain
 		if _, exists := mm.mailboxes[email]; !exists {
+			// Create mailbox in memory
 			mm.mailboxes[email] = &Mailbox{
 				Username:    def.username,
 				Email:       email,
@@ -228,53 +225,63 @@ func (mm *MailboxManager) ensureDefaultMailboxes() {
 				Description: def.description,
 				IsActive:    true,
 			}
+			// Create in database if it doesn't exist
+			if err := mm.database.CreateMailbox(email, def.password, def.description, ""); err != nil {
+				// If mailbox already exists in database, update memory to use hashed password
+				mm.mailboxes[email].Password = "***hashed***"
+			}
 		}
 	}
 
-	mm.saveToFile()
+	// Default mailboxes are created only if they don't exist
+	// No need to call saveToDatabase as they're handled individually
 }
 
-func (mm *MailboxManager) loadFromFile() error {
-	if mm.filename == "" {
-		return nil
-	}
-
-	data, err := os.ReadFile(mm.filename)
+func (mm *MailboxManager) loadFromDatabase() error {
+	mailboxes, err := mm.database.GetAllMailboxes()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+		return err
+	}
+
+	for _, mailboxDB := range mailboxes {
+		// For existing mailboxes, we use a placeholder password since we can't recover the original
+		// Authentication will be handled by the database directly
+		mailbox := &Mailbox{
+			Username:        strings.Split(mailboxDB.Email, "@")[0],
+			Email:           mailboxDB.Email,
+			Password:        "***hashed***", // Placeholder - actual auth uses database
+			CreatedAt:       mailboxDB.CreatedAt.Format("2006-01-02 15:04:05"),
+			Description:     mailboxDB.Description,
+			IsActive:        mailboxDB.IsActive,
+			Owner:           mailboxDB.Owner,
+			ForwardTo:       mailboxDB.ForwardTo,
+			ForwardEnabled:  mailboxDB.ForwardEnabled,
+			KeepOriginal:    mailboxDB.KeepOriginal,
 		}
-		return err
-	}
-
-	var config MailboxConfig
-	if err := json.Unmarshal(data, &config); err != nil {
-		return err
-	}
-
-	mm.mailboxes = config.Mailboxes
-	if mm.mailboxes == nil {
-		mm.mailboxes = make(map[string]*Mailbox)
+		mm.mailboxes[mailboxDB.Email] = mailbox
 	}
 
 	return nil
 }
 
-func (mm *MailboxManager) saveToFile() error {
-	if mm.filename == "" {
+func (mm *MailboxManager) saveToDatabase(email string) error {
+	if email == "" {
+		// This should not be called for bulk operations
 		return nil
 	}
 
-	config := MailboxConfig{
-		Mailboxes: mm.mailboxes,
+	// Save specific mailbox
+	mailbox, exists := mm.mailboxes[email]
+	if !exists {
+		return fmt.Errorf("邮箱 %s 不存在", email)
 	}
 
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return err
+	// Only create in database if it's a new mailbox (not already hashed)
+	if mailbox.Password != "***hashed***" {
+		return mm.database.CreateMailbox(mailbox.Email, mailbox.Password, mailbox.Description, mailbox.Owner)
 	}
-
-	return os.WriteFile(mm.filename, data, 0644)
+	
+	return nil
 }
 
 func getCurrentTime() string {
@@ -282,31 +289,6 @@ func getCurrentTime() string {
 }
 
 // GetAllMailboxes 获取所有邮箱
-func (mm *MailboxManager) GetAllMailboxes() []Mailbox {
-	mm.mu.RLock()
-	defer mm.mu.RUnlock()
-	
-	mailboxes := make([]Mailbox, 0, len(mm.mailboxes))
-	for _, mailbox := range mm.mailboxes {
-		mailboxCopy := *mailbox
-		mailboxes = append(mailboxes, mailboxCopy)
-	}
-	
-	return mailboxes
-}
-
-// GetMailbox 获取指定邮箱
-func (mm *MailboxManager) GetMailbox(email string) *Mailbox {
-	mm.mu.RLock()
-	defer mm.mu.RUnlock()
-	
-	if mailbox, exists := mm.mailboxes[email]; exists {
-		mailboxCopy := *mailbox
-		return &mailboxCopy
-	}
-	
-	return nil
-}
 
 // UpdateForwardingSettings 更新转发设置
 func (mm *MailboxManager) UpdateForwardingSettings(email, forwardTo string, forwardEnabled, keepOriginal bool) error {
@@ -322,5 +304,5 @@ func (mm *MailboxManager) UpdateForwardingSettings(email, forwardTo string, forw
 	mailbox.ForwardEnabled = forwardEnabled
 	mailbox.KeepOriginal = keepOriginal
 	
-	return mm.saveToFile()
+	return mm.database.UpdateMailboxForwarding(email, forwardTo, forwardEnabled, keepOriginal)
 }

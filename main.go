@@ -131,8 +131,8 @@ func NewMailServer(domain, hostname string) *MailServer {
 	}
 	
 	// 初始化各个组件
-	storage := NewEmailStorage(dataDir)
-	mailboxManager := NewMailboxManager(domain, "./data/mailboxes.json")
+	storage := NewEmailStorage(dataDir, database)
+	mailboxManager := NewMailboxManager(domain, database)
 	userAuth := NewUserAuth(database)
 	emailAuth := NewEmailAuth(domain)
 	smtpSender := NewSMTPSender(domain, hostname, emailAuth)
@@ -150,8 +150,7 @@ func NewMailServer(domain, hostname string) *MailServer {
 		relayManager:   relayManager,
 	}
 	
-	// 同步JSON邮箱数据到SQLite数据库
-	ms.syncMailboxesToDatabase()
+	// 邮箱数据直接从SQLite数据库加载
 	
 	// 设置SMTP发送器的中继
 	ms.smtpSender.SetRelay(ms.relayManager.GetRelay())
@@ -200,35 +199,6 @@ func (ms *MailServer) GetAllMailboxes() []string {
 	return mailboxNames
 }
 
-// 同步JSON邮箱数据到SQLite数据库
-func (ms *MailServer) syncMailboxesToDatabase() {
-	// 获取JSON中的所有邮箱
-	jsonMailboxes := ms.mailboxManager.GetAllMailboxes()
-	
-	log.Printf("开始同步邮箱数据到数据库，JSON中有 %d 个邮箱", len(jsonMailboxes))
-	
-	for _, mailbox := range jsonMailboxes {
-		// 检查数据库中是否已存在该邮箱
-		_, err := ms.database.GetMailbox(mailbox.Email)
-		if err != nil {
-			// 邮箱不存在，需要创建
-			log.Printf("正在同步邮箱: %s", mailbox.Email)
-			
-			// 创建邮箱到数据库 (JSON中的密码是明文，CreateMailbox会自动哈希)
-			err = ms.database.CreateMailbox(mailbox.Email, mailbox.Password, mailbox.Description, mailbox.Owner)
-			if err != nil {
-				log.Printf("同步邮箱 %s 失败: %v", mailbox.Email, err)
-			} else {
-				log.Printf("成功同步邮箱: %s", mailbox.Email)
-			}
-		} else {
-			// 邮箱已存在，但可能需要更新转发设置
-			log.Printf("邮箱 %s 已存在，跳过同步", mailbox.Email)
-		}
-	}
-	
-	log.Printf("邮箱数据同步完成")
-}
 
 func (ms *MailServer) HandleSMTP(conn net.Conn) {
 	defer conn.Close()
@@ -495,9 +465,15 @@ func (ms *MailServer) apiCreateMailbox(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// 获取当前用户作为邮箱所有者
-	currentUser := ms.getUserFromRequest(r)
+	currentUser, isAdmin := ms.getCurrentUserFromRequest(r)
 	if currentUser == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	// 只有管理员可以创建邮箱
+	if !isAdmin {
+		http.Error(w, "Only admin can create mailboxes", http.StatusForbidden)
 		return
 	}
 	
@@ -522,25 +498,51 @@ func (ms *MailServer) apiManageMailboxes(w http.ResponseWriter, r *http.Request)
 	
 	switch r.Method {
 	case "GET":
+		// 获取当前用户信息
+		currentUser, isAdmin := ms.getCurrentUserFromRequest(r)
+		if currentUser == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+			return
+		}
+		
 		mailboxes := ms.mailboxManager.GetAllMailboxes()
 		var result []map[string]interface{}
 		
 		for _, mailbox := range mailboxes {
-			result = append(result, map[string]interface{}{
-				"email":       mailbox.Email,
-				"username":    mailbox.Username,
-				"description": mailbox.Description,
-				"created_at":  mailbox.CreatedAt,
-				"is_active":   mailbox.IsActive,
-			})
+			// 如果是管理员，显示所有邮箱；如果是普通用户，只显示自己的邮箱
+			if isAdmin || mailbox.Email == currentUser {
+				result = append(result, map[string]interface{}{
+					"email":       mailbox.Email,
+					"username":    mailbox.Username,
+					"description": mailbox.Description,
+					"created_at":  mailbox.CreatedAt,
+					"is_active":   mailbox.IsActive,
+				})
+			}
 		}
 		
 		json.NewEncoder(w).Encode(result)
 		
 	case "DELETE":
+		// 权限检查
+		currentUser, isAdmin := ms.getCurrentUserFromRequest(r)
+		if currentUser == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+			return
+		}
+		
 		email := r.URL.Query().Get("email")
 		if email == "" {
 			http.Error(w, "邮箱地址不能为空", http.StatusBadRequest)
+			return
+		}
+		
+		// 只有管理员可以删除邮箱
+		if !isAdmin {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{"error": "only admin can delete mailboxes"})
 			return
 		}
 		
@@ -2525,6 +2527,43 @@ func (ms *MailServer) DeleteEmail(mailbox, emailID string) bool {
 	return ms.storage.DeleteEmail(mailbox, emailID)
 }
 
+// getCurrentUserFromRequest 从请求中获取当前用户信息
+func (ms *MailServer) getCurrentUserFromRequest(r *http.Request) (string, bool) {
+	// 尝试从Authorization头获取token
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		
+		// 尝试验证JWT token
+		if claims, err := ms.userAuth.ValidateJWTToken(token); err == nil {
+			// JWT验证成功
+			email := claims.Email
+			isAdmin := claims.IsAdmin
+			return email, isAdmin
+		}
+		
+		// JWT验证失败，尝试base64解码（兼容旧版本）
+		if decoded, err := base64.StdEncoding.DecodeString(token); err == nil {
+			parts := strings.Split(string(decoded), ":")
+			if len(parts) >= 1 {
+				email := parts[0]
+				isAdmin := ms.database.IsAdmin(email)
+				return email, isAdmin
+			}
+		}
+	}
+	
+	// 如果没有Authorization头，尝试从查询参数获取（兼容性）
+	email := r.URL.Query().Get("email")
+	if email != "" {
+		isAdmin := ms.database.IsAdmin(email)
+		return email, isAdmin
+	}
+	
+	return "", false
+}
+
+
 func main() {
 	domain := "freeagent.live"
 	hostname := "localhost"
@@ -2962,6 +3001,7 @@ func (ms *MailServer) apiAuthLogin(w http.ResponseWriter, r *http.Request) {
 		response = map[string]interface{}{
 			"token_type":   "Bearer",
 			"user_email":   req.Email,
+			"is_admin":     user.IsAdmin,
 		}
 		for k, v := range tokens {
 			response[k] = v
@@ -2975,6 +3015,7 @@ func (ms *MailServer) apiAuthLogin(w http.ResponseWriter, r *http.Request) {
 			"token_type":   "Bearer",
 			"expires_in":   86400,
 			"user_email":   req.Email,
+			"is_admin":     user.IsAdmin,
 		}
 	}
 	

@@ -1,40 +1,23 @@
-2025/07/14 20:58:17 Redis connection failed: dial tcp [::1]:6379: connect: connection refused
-2025/07/14 20:58:17 Failed to create secure database: failed to initialize tables: failed to execute query: CREATE TABLE IF NOT EXISTS encrypted_emails (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			mailbox TEXT NOT NULL,
-			encrypted_data TEXT NOT NULL,
-			salt TEXT NOT NULL,
-			nonce TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			INDEX(mailbox),
-			INDEX(created_at)
-		), error: near "INDEX": syntax error
-2025/07/14 20:58:17 已加载DKIM密钥
-2025/07/14 20:58:17 SMTP中继配置加载成功: email-smtp.us-east-1.amazonaws.com:587 (启用: true)
+2025/07/16 17:22:18 已加载DKIM密钥
+2025/07/16 17:22:18 SMTP中继配置加载成功: email-smtp.us-east-1.amazonaws.com:587 (启用: true)
 ===============================================
 🎮 YgoCard 全功能邮箱服务器启动完成!
 ===============================================
-域名: freeagent.live
+域名: ygocard.org
 主机名: localhost
 SMTP服务器: 0.0.0.0:25 (接收邮件)
 IMAP服务器: 0.0.0.0:143 (客户端访问)
 Web界面: http://0.0.0.0:9090
 支持功能: SMTP接收/发送、IMAP访问、邮箱管理、自定义用户名
-默认管理员: admin@freeagent.live / 密码: admin123
+默认管理员: admin@ygocard.org / 密码: admin123
 ===============================================
 ⚠️  生产环境模式 (端口25)
 请确保已配置以下DNS记录:
-1. A记录: mail.freeagent.live -> 服务器IP
-2. MX记录: freeagent.live -> mail.freeagent.live (优先级10)
-3. TXT记录: freeagent.live -> "v=spf1 a mx ~all"
+1. A记录: mail.ygocard.org -> 服务器IP
+2. MX记录: ygocard.org -> mail.ygocard.org (优先级10)
+3. TXT记录: ygocard.org -> "v=spf1 a mx ~all"
 防火墙端口: 25(SMTP), 143(IMAP), 9090(Web)
 ===============================================
-2025/07/14 20:58:17 Web server listening on 0.0.0.0:9090 (accepting external connections)
-2025/07/14 20:58:17 IMAP server listening on 0.0.0.0:143
-2025/07/14 20:58:17 SMTP server listening on 0.0.0.0:25 (accepting external connections)
-Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
-5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-23de4323daesm92016985ad.139 - gsmtp
-Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
-5.7.8  https://support.google.com/mail/?p=BadCredentials d2e1a72fcca58-74eb9e06aa6sm10871658b3a.62 - gsmtp
-Failed to send security alert email: 535 5.7.8 Username and Password not accepted. For more information, go to
-5.7.8  https://support.google.com/mail/?p=BadCredentials d9443c01a7336-23de4322cd2sm90502005ad.99 - gsmtp
+2025/07/16 17:22:18 Web server listening on 0.0.0.0:9090 (accepting external connections)
+2025/07/16 17:22:18 IMAP server listening on 0.0.0.0:143
+2025/07/16 17:22:18 SMTP server listening on 0.0.0.0:25 (accepting external connections)
