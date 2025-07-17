@@ -73,7 +73,7 @@
     cd backend
     go build -o mailserver .
     # 格式: ./mailserver [域名] [主机] [SMTP端口] [IMAP端口] [Web端口]
-    sudo ./mailserver ygocard.org localhost 25 143 9090
+    sudo ./mailserver goposter.fun localhost 25 143 9090
     ```
 
 3.  **启动前端服务器**
@@ -88,7 +88,7 @@
     - **后端 API:** `http://localhost:9090`
 
 ### 默认登录账户
-- **用户名:** `admin@ygocard.org`
+- **用户名:** `admin@goposter.fun`
 - **密码:** `admin123`
 
 ## 🏭 生产环境部署
@@ -116,12 +116,12 @@
     ```bash
     # 启动 (前台运行)
     # 格式: ./mailserver [域名] [公网主机] [SMTP] [IMAP] [Web/API端口]
-    sudo ./mailserver ygocard.org mail.ygocard.org 25 143 9090
+    sudo ./mailserver goposter.fun mail.goposter.fun 25 143 9090
     ```
 
 5.  **后台持久化运行 (推荐)**
     ```bash
-    nohup sudo ./mailserver ygocard.org localhost 25 143 9090 > server.log 2>&1 &
+    nohup sudo ./mailserver goposter.fun localhost 25 143 9090 > server.log 2>&1 &
     ```
 
 ## 📁 项目结构
@@ -145,12 +145,12 @@
 
 ## 🌐 DNS 配置
 
-要使 `ygocard.org` 能够接收外部邮件，请确保以下 DNS 记录已正确配置：
+要使 `goposter.fun` 能够接收外部邮件，请确保以下 DNS 记录已正确配置：
 
 | 类型  | 名称                       | 值 / 目标                  | 优先级 |
 | :---- | :------------------------- | :------------------------- | :----- |
-| **A** | `mail.ygocard.org`         | `[你的服务器IP]`           | -      |
-| **MX**| `ygocard.org`              | `mail.ygocard.org`         | 10     |
+| **A** | `mail.goposter.fun`         | `[你的服务器IP]`           | -      |
+| **MX**| `goposter.fun`              | `mail.goposter.fun`         | 10     |
 
 > 📚 **详细指南:**
 > - **[域名设置](./docs/guides/DOMAIN-SETUP-GUIDE.md)**

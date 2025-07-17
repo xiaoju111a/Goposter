@@ -24,9 +24,9 @@ class ConfigManager {
       console.error('Error fetching config:', error);
       // 返回默认配置
       this.config = {
-        domain: 'ygocard.org',
+        domain: 'goposter.fun',
         hostname: 'localhost',
-        admin_email: 'admin@ygocard.org',
+        admin_email: 'admin@goposter.fun',
         app_name: 'YGoCard Mail',
         version: '1.0.0'
       };

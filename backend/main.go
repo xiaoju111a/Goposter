@@ -132,7 +132,7 @@ func NewMailServer(domain, hostname string) *MailServer {
 	generateDKIMKeys(dataDir)
 	
 	// 初始化SQLite数据库
-	database, err := NewDatabase("./data/mailserver.db")
+	database, err := NewDatabase("./data/mailserver.db", domain)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}

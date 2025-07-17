@@ -17,6 +17,7 @@ type Database struct {
 	db               *sql.DB
 	secureDB         *SecureDatabase
 	encryptionManager *EncryptionManager
+	domain           string // 添加domain字段
 }
 
 type UserDB struct {
@@ -64,7 +65,7 @@ type MailboxDB struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-func NewDatabase(dbPath string) (*Database, error) {
+func NewDatabase(dbPath, domain string) (*Database, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %v", err)
@@ -84,6 +85,7 @@ func NewDatabase(dbPath string) (*Database, error) {
 		db:               db,
 		secureDB:         secureDB,
 		encryptionManager: encryptionManager,
+		domain:           domain,
 	}
 	
 	if err := database.createTables(); err != nil {
@@ -293,7 +295,7 @@ func (d *Database) IsAdmin(email string) bool {
 	err := d.db.QueryRow("SELECT is_admin FROM users WHERE email = ?", email).Scan(&isAdmin)
 	if err != nil {
 		// 默认管理员账号
-		return email == "admin@ygocard.live" || email == "xiaoju@ygocard.live"
+		return email == "admin@"+d.domain
 	}
 
 	return isAdmin
@@ -446,7 +448,7 @@ func (d *Database) hashPassword(password, salt string) string {
 }
 
 func (d *Database) ensureDefaultAdmin() error {
-	adminEmail := "admin@ygocard.live"
+	adminEmail := "admin@" + d.domain
 
 	var count int
 	err := d.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", adminEmail).Scan(&count)
@@ -459,20 +461,6 @@ func (d *Database) ensureDefaultAdmin() error {
 			return err
 		}
 		log.Printf("Created default admin user: %s (password: admin123)", adminEmail)
-	}
-
-	// 也为xiaoju用户创建账号
-	xiaojuEmail := "xiaoju@ygocard.live"
-	err = d.db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", xiaojuEmail).Scan(&count)
-	if err != nil {
-		return err
-	}
-
-	if count == 0 {
-		if err := d.CreateUser(xiaojuEmail, "xiaoju123", true); err != nil {
-			return err
-		}
-		log.Printf("Created xiaoju user: %s (password: xiaoju123)", xiaojuEmail)
 	}
 
 	return nil
