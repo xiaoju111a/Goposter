@@ -4,7 +4,8 @@ import configManager from '../utils/config.js';
 
 const SendEmail = ({ userEmail = '' }) => {
   const [config, setConfig] = useState({
-    admin_email: 'admin@ygocard.live'
+    admin_email: 'admin@ygocard.org',
+    domain: 'ygocard.org'
   });
   const [emailData, setEmailData] = useState({
     from: userEmail || config.admin_email,
@@ -12,8 +13,10 @@ const SendEmail = ({ userEmail = '' }) => {
     subject: '',
     body: ''
   });
+  const [relayStatus, setRelayStatus] = useState(null);
+  const [relayLoading, setRelayLoading] = useState(true);
   
-  // 加载配置
+  // 加载配置和SMTP中继状态
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -30,7 +33,36 @@ const SendEmail = ({ userEmail = '' }) => {
         console.error('Failed to load config:', error);
       }
     };
+    
+    const loadRelayStatus = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setRelayLoading(false);
+          return;
+        }
+        
+        const response = await fetch('/api/relay/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRelayStatus(data);
+        } else {
+          console.error('Failed to load relay status:', response.status);
+        }
+      } catch (error) {
+        console.error('Failed to load relay status:', error);
+      } finally {
+        setRelayLoading(false);
+      }
+    };
+    
     loadConfig();
+    loadRelayStatus();
   }, [userEmail]);
   
   // 当userEmail变化时更新from字段
@@ -45,11 +77,30 @@ const SendEmail = ({ userEmail = '' }) => {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
 
+  // 检查邮箱是否为外部邮箱
+  const isExternalEmail = (email) => {
+    if (!email || !config.domain) return false;
+    return !email.endsWith(`@${config.domain}`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!emailData.from || !emailData.to || !emailData.subject || !emailData.body) {
       setMessage('请填写所有必填字段');
       return;
+    }
+
+    // 检查是否为外部邮箱且没有配置SMTP中继
+    if (isExternalEmail(emailData.to)) {
+      if (!relayStatus || !relayStatus.enabled) {
+        setMessage('⚠️ 发送外部邮件需要配置SMTP中继服务。请联系管理员配置SMTP中继后再发送外部邮件。');
+        return;
+      }
+      
+      if (!relayStatus.connection_ok) {
+        setMessage('⚠️ SMTP中继服务连接异常，无法发送外部邮件。请联系管理员检查SMTP中继配置。');
+        return;
+      }
     }
 
     setSending(true);
@@ -82,6 +133,30 @@ const SendEmail = ({ userEmail = '' }) => {
   return (
     <div className="send-email-container">
       <h3>📧 发送邮件</h3>
+      
+      {/* SMTP中继状态指示器 */}
+      {!relayLoading && (
+        <div className="smtp-relay-status">
+          <div className="status-indicator">
+            <span className="status-label">SMTP中继状态:</span>
+            {relayStatus && relayStatus.enabled ? (
+              <span className={`status-badge ${relayStatus.connection_ok ? 'success' : 'error'}`}>
+                {relayStatus.connection_ok ? '✅ 正常' : '❌ 异常'}
+              </span>
+            ) : (
+              <span className="status-badge disabled">⚠️ 未配置</span>
+            )}
+          </div>
+          <div className="status-description">
+            {relayStatus && relayStatus.enabled && relayStatus.connection_ok ? (
+              <small>✅ 可以发送外部邮件</small>
+            ) : (
+              <small>⚠️ 仅支持内部邮件（@{config.domain}）</small>
+            )}
+          </div>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="send-email-form">
         <div className="form-row">
           <div className="form-group">
@@ -91,7 +166,7 @@ const SendEmail = ({ userEmail = '' }) => {
               id="from"
               value={emailData.from}
               onChange={handleChange('from')}
-              placeholder={`your-name@${config.domain || 'ygocard.live'}`}
+              placeholder={`your-name@${config.domain || 'ygocard.org'}`}
               required
             />
           </div>
@@ -103,9 +178,23 @@ const SendEmail = ({ userEmail = '' }) => {
               id="to"
               value={emailData.to}
               onChange={handleChange('to')}
-              placeholder="recipient@example.com"
+              placeholder={`recipient@${config.domain || 'example.com'}`}
               required
             />
+            {/* 动态提示信息 */}
+            {emailData.to && (
+              <div className="recipient-hint">
+                {isExternalEmail(emailData.to) ? (
+                  <small style={{ color: '#f39c12' }}>
+                    ⚠️ 外部邮件 - 需要SMTP中继服务
+                  </small>
+                ) : (
+                  <small style={{ color: '#27ae60' }}>
+                    ✅ 内部邮件 - 可直接发送
+                  </small>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

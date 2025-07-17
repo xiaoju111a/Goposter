@@ -151,8 +151,6 @@
 | :---- | :------------------------- | :------------------------- | :----- |
 | **A** | `mail.ygocard.org`         | `[你的服务器IP]`           | -      |
 | **MX**| `ygocard.org`              | `mail.ygocard.org`         | 10     |
-| **TXT**| `ygocard.org`              | `"v=spf1 a mx ~all"`       | -      |
-| **TXT**| `default._domainkey.ygocard.org` | `"v=DKIM1; k=rsa; p=[公钥]"` | -      |
 
 > 📚 **详细指南:**
 > - **[域名设置](./docs/guides/DOMAIN-SETUP-GUIDE.md)**

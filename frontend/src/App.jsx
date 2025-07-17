@@ -39,8 +39,8 @@ const App = () => {
     const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [config, setConfig] = useState({
-        domain: 'ygocard.live',
-        admin_email: 'admin@ygocard.live'
+        domain: 'ygocard.org',
+        admin_email: 'admin@ygocard.org'
     });
 
     const loadMailboxes = useCallback(async () => {
