@@ -450,6 +450,31 @@ func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	// JWT鉴权验证
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		return
+	}
+	
+	// 移除Bearer前缀
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+	
+	// 验证JWT token
+	claims, err := ms.userAuth.ValidateJWTToken(token)
+	if err != nil {
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
+	
+	// 检查token是否过期
+	if claims.ExpiresAt < time.Now().Unix() {
+		http.Error(w, "Token expired", http.StatusUnauthorized)
+		return
+	}
+	
 	var req struct {
 		From    string `json:"from"`
 		To      string `json:"to"`
@@ -459,6 +484,12 @@ func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
 	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	
+	// 验证发件人邮箱是否与token中的邮箱匹配
+	if req.From != claims.Email {
+		http.Error(w, "From email must match authenticated user", http.StatusForbidden)
 		return
 	}
 	
