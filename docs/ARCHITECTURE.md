@@ -1,12 +1,12 @@
-# goposter Mail - 系统架构
+# Goposter Mail - 系统架构
 
-本文档深入探讨 goposter Mail 的技术架构、设计原则和核心组件，旨在为开发者提供一个清晰的系统内部工作原理视图。
+本文档深入探讨 Goposter Mail 的技术架构、设计原则和核心组件，旨在为开发者提供一个清晰的系统内部工作原理视图。
 
 ---
 
 ## 1. 设计原则
 
-goposter Mail 的架构设计遵循以下核心原则：
+Goposter Mail 的架构设计遵循以下核心原则：
 
 - **安全第一:** 在设计的每个层面都优先考虑安全性，从数据传输、存储到访问控制。
 - **高性能:** 采用现代技术和并发模型，确保系统在高负载下依然能提供低延迟和高吞吐量。
@@ -30,30 +30,22 @@ goposter Mail 的架构设计遵循以下核心原则：
 
 ## 3. 项目结构
 
-项目采用扁平化的 Go 工作区结构，所有后端源码位于根目录，并编译为单个二进制文件。前端代码则独立存放于 `frontend` 目录。
+项目采用扁平化的 Go 工作区结构，所有后端源码位于backend目录，并编译为单个二进制文件。前端代码则独立存放于 `frontend` 目录。
+
 
 ```
 /
-├── go.mod            # Go 模块依赖
-├── main.go           # 主程序入口、HTTP/API 服务器、WebSocket
-├── auth.go           # 认证逻辑 (登录, JWT, 2FA)
-├── database.go       # 数据库操作 (SQLite)
-├── encryption.go     # 邮件内容的端到端加密 (AES-256-GCM)
-├── smtp_relay.go     # SMTP 协议实现 (接收邮件)
-├── smtp_sender.go    # SMTP 邮件发送逻辑
-├── imap.go           # IMAP 协议实现
-├── email_parser.go   # 邮件内容和头解析
-├── async_sender.go   # 异步邮件发送队列
-├── queue_system.go   # 内存消息队列实现
-├── ...               # 其他核心 Go 源文件
+├── backend/          # Go 后端应用
+│   ├── data/         # 运行时数据 (数据库, 邮件)
+│   ├── go.mod        # Go 模块依赖
+│   ├── main.go       # 主程序入口
+│   ├── ...           # 其他核心 Go 源文件
+│   └── mailserver    # 编译后的可执行文件
 ├── frontend/         # React 前端应用
 │   ├── src/
-│   │   ├── components/ # React 组件
-│   │   └── utils/      # API 调用和认证逻辑
-│   └── dist/         # 前端构建产物
-├── data/             # 运行时数据 (数据库, 加密后的邮件)
+│   └── ...
 ├── docs/             # 项目详细文档
-└── test/             # 性能和压力测试脚本
+└── benchmark/        # 性能测试脚本
 ```
 
 ---

@@ -16,8 +16,8 @@
 ### 当前SES配置
 - **SMTP端点**: email-smtp.us-east-1.amazonaws.com
 - **端口**: 587 (TLS)
-- **用户名**: AKIAXA7QUP4N5B53XIV7
-- **密码**: BDm9CIr6aVzWuVcH/4SyZjaPcpCBUPUG3xcXMBT9YMUL
+- **用户名**: AKIAXA7QUP4N5BIV7
+- **密码**: BDm9CIr6aVzWuVcH/4SPcpCBUcXMBT9YMUL
 - **状态**: ✅ 已验证连接成功
 
 ### 支持的AWS区域
@@ -33,28 +33,18 @@
 
 ## 配置步骤
 
-### 1. Web界面配置
 
-1. 访问邮箱管理界面: http://localhost:8080
-2. 找到"SMTP中继配置"部分
-3. 在提供商下拉菜单中选择"美国东部 (us-east-1)"
-4. 系统会自动填充SMTP主机和端口
-5. 输入您的SES用户名和密码
-6. 勾选"启用SMTP中继"
-7. 点击"测试连接"验证配置
-8. 点击"保存配置"
+### 1. 直接编辑配置文件
 
-### 2. 直接编辑配置文件
-
-编辑 `./data/smtp_relay.json`：
+编辑 `./backend/data/smtp_relay.json`：
 
 ```json
 {
   "enabled": true,
   "host": "email-smtp.us-east-1.amazonaws.com",
   "port": 587,
-  "username": "AKIAXA7QUP4N5B53XIV7",
-  "password": "BDm9CIr6aVzWuVcH/4SyZjaPcpCBUPUG3xcXMBT9YMUL",
+  "username": "AKIAXA7QUN5B3XIV7",
+  "password": "BDm9CIr6aVzWuVcH/4aPBUPUG3xcXMBT9YMUL",
   "use_tls": true
 }
 ```
