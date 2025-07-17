@@ -158,7 +158,12 @@ func (r *SMTPRelay) connectWithTLS(serverAddr string) (*smtp.Client, error) {
 	
 	startTime := time.Now()
 	
-	// 首先尝试STARTTLS
+	// 对于465端口，使用SSL直连
+	if r.config.Port == 465 {
+		return r.connectWithSSL(serverAddr, startTime)
+	}
+	
+	// 对于其他端口，使用STARTTLS
 	conn, err := net.DialTimeout("tcp", serverAddr, 10*time.Second)
 	if err != nil {
 		log.Printf("[SMTP中继] TCP连接失败: %s, 耗时: %v, 错误: %v", serverAddr, time.Since(startTime), err)
@@ -185,6 +190,28 @@ func (r *SMTPRelay) connectWithTLS(serverAddr string) (*smtp.Client, error) {
 	}
 
 	log.Printf("[SMTP中继] TLS连接建立成功: %s, 耗时: %v", serverAddr, time.Since(startTime))
+	return client, nil
+}
+
+func (r *SMTPRelay) connectWithSSL(serverAddr string, startTime time.Time) (*smtp.Client, error) {
+	log.Printf("[SMTP中继] 使用SSL直连: %s", serverAddr)
+	
+	// 使用SSL直连（适用于465端口）
+	conn, err := tls.Dial("tcp", serverAddr, nil)
+	if err != nil {
+		log.Printf("[SMTP中继] SSL连接失败: %s, 耗时: %v, 错误: %v", serverAddr, time.Since(startTime), err)
+		return nil, fmt.Errorf("SSL连接失败: %v", err)
+	}
+
+	host, _, _ := net.SplitHostPort(serverAddr)
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		conn.Close()
+		log.Printf("[SMTP中继] SMTP客户端创建失败: %s, 耗时: %v, 错误: %v", serverAddr, time.Since(startTime), err)
+		return nil, fmt.Errorf("SMTP客户端创建失败: %v", err)
+	}
+
+	log.Printf("[SMTP中继] SSL连接建立成功: %s, 耗时: %v", serverAddr, time.Since(startTime))
 	return client, nil
 }
 
