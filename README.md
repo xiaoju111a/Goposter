@@ -152,6 +152,34 @@
 | **A** | `mail.goposter.fun`         | `[你的服务器IP]`           | -      |
 | **MX**| `goposter.fun`              | `mail.goposter.fun`         | 10     |
 
+## 🔌 端口配置
+
+服务器需要开启以下端口以确保邮件服务正常运行：
+
+### 必需端口
+| 端口 | 协议 | 服务 | 说明 |
+| :--- | :--- | :--- | :--- |
+| **25** | TCP | SMTP | 邮件接收端口 (需要 sudo 权限) |
+| **143** | TCP | IMAP | 邮件客户端访问端口 (需要 sudo 权限) |
+| **9090** | TCP | 后端API | 邮件服务器后端管理接口 |
+| **8080** | TCP | 前端Web | 前端管理界面访问端口 |
+
+### 防火墙配置示例
+```bash
+# Ubuntu/Debian
+sudo ufw allow 25/tcp
+sudo ufw allow 143/tcp
+sudo ufw allow 9090/tcp
+sudo ufw allow 8080/tcp
+
+# CentOS/RHEL
+sudo firewall-cmd --permanent --add-port=25/tcp
+sudo firewall-cmd --permanent --add-port=143/tcp
+sudo firewall-cmd --permanent --add-port=9090/tcp
+sudo firewall-cmd --permanent --add-port=8080/tcp
+sudo firewall-cmd --reload
+```
+
 > 📚 **详细指南:**
 > - **[域名设置](./docs/guides/DOMAIN-SETUP-GUIDE.md)**
 > - **[邮件认证](./docs/guides/DNS-EMAIL-AUTH-GUIDE.md)**
