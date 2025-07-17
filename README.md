@@ -64,8 +64,8 @@
 
 1.  **克隆项目**
     ```bash
-    git clone [项目地址]
-    cd mail
+    git clone https://github.com/xiaoju111a/Goposter.git
+    cd Goposter
     ```
 
 2.  **编译并启动后端服务器**
