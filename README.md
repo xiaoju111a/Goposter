@@ -180,10 +180,35 @@ sudo firewall-cmd --permanent --add-port=8080/tcp
 sudo firewall-cmd --reload
 ```
 
-> 📚 **详细指南:**
-> - **[域名设置](./docs/guides/DOMAIN-SETUP-GUIDE.md)**
-> - **[邮件认证](./docs/guides/DNS-EMAIL-AUTH-GUIDE.md)**
-> - **[端口与防火墙](./docs/guides/PORT-FIREWALL-GUIDE.md)**
+## 📧 SMTP中继配置
+
+goposter 支持通过 SMTP 中继发送邮件，提供更稳定的邮件投递服务。已内置支持以下中继服务商：
+
+### 支持的中继服务商
+- **🐧 腾讯云邮件推送 (SES)** - 稳定的企业级邮件服务
+- **🌟 Amazon SES** - 高可靠性的云邮件服务
+- **🔧 自定义 SMTP** - 支持任意 SMTP 服务器
+
+### 配置方法
+1. 编辑 `backend/data/smtp_relay.json` 文件
+2. 填入您的 SMTP 服务器信息：
+   ```json
+   {
+     "enabled": true,
+     "host": "smtp.example.com",
+     "port": 587,
+     "username": "your_username",
+     "password": "your_password",
+     "use_tls": true
+   }
+   ```
+3. 重启邮件服务器即可生效
+
+### 配置指南
+- **[腾讯云邮件推送配置](./docs/guides/TENCENT_SES_GUIDE.md)**
+- **[Amazon SES配置](./docs/guides/AMAZON_SES_GUIDE.md)**
+
+> 💡 **提示：** 使用SMTP中继可以显著提高邮件送达率，避免被标记为垃圾邮件。
 
 ## 📈 性能亮点
 
