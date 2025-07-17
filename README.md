@@ -1,4 +1,4 @@
-# 📧 goposter Mail - 企业级开源邮件服务器
+# 📧 Goposter Mail - 企业级开源邮件服务器
 
 [![Go version](https://img.shields.io/badge/Go-1.19+-00ADD8.svg?style=for-the-badge&logo=go)](https://golang.org/)
 [![React version](https://img.shields.io/badge/React-18-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org/)
@@ -17,7 +17,7 @@
 - **JWT 令牌系统:** 访问/刷新令牌机制，内置黑名单。
 - **端到端加密:** 邮件内容使用 AES-256-GCM 加密存储。
 - **密码安全策略:** 强制密码强度，防爆力破解（5次失败锁定30分钟）。
-- **安全审计日志:** 追踪所有敏感操作，��于分析与回溯。
+- **安全审计日志:** 追踪所有敏感操作，用于分析与回溯。
 - **TLS/SSL 加密:** 全面支持 SMTP/IMAP/HTTPS 的 TLS 1.2/1.3 加密通信。
 - **邮件认证:** 内置 SPF 和 DKIM 支持，防止邮件伪造。
 
@@ -64,8 +64,8 @@
 
 1.  **克隆项目**
     ```bash
-    git clone [项目地址]
-    cd mail
+    git clone https://github.com/xiaoju111a/Goposter.git
+    cd Goposter
     ```
 
 2.  **编译并启动后端服务器**
@@ -189,7 +189,7 @@ sudo firewall-cmd --reload
 
 本项目经过了严格的高并发性能测试，结果表明其完全具备企业级生产部署能力。
 
-| 测试项目 | 并发数 | 峰值吞吐量 | 平���响应时间 | 成功率 |
+| 测试项目 | 并发数 | 峰值吞吐量 | 平均G响应时间 | 成功率 |
 |:---|:---:|:---:|:---:|:---:|
 | **API 接口 (Node.js)** | 100 | **1,234 req/s** | 35.5ms | 100% |
 | **SMTP 连接 (Go)** | 50 | **1,372 conn/s** | 1.5ms | 100% |
