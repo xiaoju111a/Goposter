@@ -1,4 +1,4 @@
-# 🔒 YgoCard 邮箱服务器端口和防火墙配置指南
+# 🔒 goposter 邮箱服务器端口和防火墙配置指南
 
 ## 📋 需要开放的端口
 
@@ -52,9 +52,9 @@ sudo ufw allow 25/tcp
 #### 完整脚本
 ```bash
 #!/bin/bash
-# YgoCard 防火墙配置脚本
+# goposter 防火墙配置脚本
 
-echo "🔒 配置 YgoCard 邮箱服务器防火墙..."
+echo "🔒 配置 goposter 邮箱服务器防火墙..."
 
 # 重置防火墙规则
 sudo ufw --force reset
@@ -125,9 +125,9 @@ sudo firewall-cmd --list-all
 #### 完整脚本
 ```bash
 #!/bin/bash
-# YgoCard 防火墙配置脚本 (CentOS/RHEL)
+# goposter 防火墙配置脚本 (CentOS/RHEL)
 
-echo "🔒 配置 YgoCard 邮箱服务器防火墙..."
+echo "🔒 配置 goposter 邮箱服务器防火墙..."
 
 # 启动并启用firewalld
 sudo systemctl start firewalld
@@ -313,4 +313,4 @@ sudo ufw allow 587/tcp
 - [ ] **端口测试**: 外部可访问
 - [ ] **服务启动**: 邮箱服务正常运行
 
-完成配置后，你的 YgoCard 邮箱服务器将能够安全地接收和管理邮件！
+完成配置后，你的 goposter 邮箱服务器将能够安全地接收和管理邮件！

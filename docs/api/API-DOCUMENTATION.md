@@ -1,12 +1,12 @@
-# YgoCard Mail - API 文档
+# goposter Mail - API 文档
 
-欢迎使用 YgoCard Mail API 文档。本文档旨在为开发者提供与 YgoCard Mail 后端服务进行交互所需的所有信息。
+欢迎使用 goposter Mail API 文档。本文档旨在为开发者提供与 goposter Mail 后端服务进行交互所需的所有信息。
 
 ---
 
 ## 1. 认证
 
-YgoCard Mail API 使用 **JWT (JSON Web Tokens)** 进行认证。所有需要认证的请求都必须在 HTTP Header 中包含一个有效的 `Authorization` 令牌。
+goposter Mail API 使用 **JWT (JSON Web Tokens)** 进行认证。所有需要认证的请求都必须在 HTTP Header 中包含一个有效的 `Authorization` 令牌。
 
 - **Header:** `Authorization`
 - **Value:** `Bearer <YOUR_JWT_TOKEN>`

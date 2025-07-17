@@ -46,7 +46,7 @@ func (imap *IMAPServer) HandleIMAPConnection(conn net.Conn) {
 	writer := bufio.NewWriter(conn)
 	
 	// IMAP greeting
-	writer.WriteString("* OK [CAPABILITY IMAP4rev1] YgoCard IMAP Server ready\r\n")
+	writer.WriteString("* OK [CAPABILITY IMAP4rev1] goposter IMAP Server ready\r\n")
 	writer.Flush()
 	
 	var authenticated bool
@@ -127,7 +127,7 @@ func (imap *IMAPServer) HandleIMAPConnection(conn net.Conn) {
 			}
 			
 		case "LOGOUT":
-			writer.WriteString("* BYE YgoCard IMAP Server logging out\r\n")
+			writer.WriteString("* BYE goposter IMAP Server logging out\r\n")
 			writer.WriteString(tag + " OK LOGOUT completed\r\n")
 			writer.Flush()
 			return

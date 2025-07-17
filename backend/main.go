@@ -814,7 +814,7 @@ func (ms *MailServer) apiConfig(w http.ResponseWriter, r *http.Request) {
 		"domain":    ms.domain,
 		"hostname":  ms.hostname,
 		"admin_email": "admin@" + ms.domain,
-		"app_name":  "YgoCard Mail",
+		"app_name":  "goposter Mail",
 		"version":   "1.0.0",
 	}
 	
@@ -956,7 +956,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
 	html := `<!DOCTYPE html>
 <html>
 <head>
-    <title>YgoCard 邮箱管理系统</title>
+    <title>goposter 邮箱管理系统</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -2186,7 +2186,7 @@ func (ms *MailServer) reactHandler(w http.ResponseWriter, r *http.Request) {
         </div>
         
         <div class="header">
-            <h1>🎮 YgoCard 邮箱管理系统</h1>
+            <h1>🎮 goposter 邮箱管理系统</h1>
             <div class="subtitle">基于 ` + ms.domain + ` 域名的专业邮箱服务</div>
             <div class="stats">
                 <div class="stat-item">
@@ -2721,7 +2721,7 @@ func main() {
 	go mailServer.imapServer.StartIMAPServer(imapPort)
 	
 	fmt.Printf("===============================================\n")
-	fmt.Printf("🎮 YgoCard 全功能邮箱服务器启动完成!\n")
+	fmt.Printf("🎮 goposter 全功能邮箱服务器启动完成!\n")
 	fmt.Printf("===============================================\n")
 	fmt.Printf("域名: %s\n", domain)
 	fmt.Printf("主机名: %s\n", hostname)

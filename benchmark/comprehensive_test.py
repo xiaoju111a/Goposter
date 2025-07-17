@@ -430,7 +430,7 @@ class ComprehensiveTest:
     def print_summary_report(self, total_test_time):
         """打印摘要报告"""
         print("\\n" + "="*80)
-        print("📊 YgoCard邮箱服务器综合性能测试报告")
+        print("📊 goposter邮箱服务器综合性能测试报告")
         print("="*80)
         print(f"测试时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"总测试时长: {total_test_time:.2f}秒")
@@ -471,7 +471,7 @@ class ComprehensiveTest:
             md_file = f"results/performance_report_{timestamp}.md"
             
             with open(md_file, 'w', encoding='utf-8') as f:
-                f.write("# YgoCard邮箱服务器性能测试报告\\n\\n")
+                f.write("# goposter邮箱服务器性能测试报告\\n\\n")
                 f.write(f"**测试时间:** {report_data['timestamp']}\\n")
                 f.write(f"**测试时长:** {report_data['test_duration']:.2f}秒\\n")
                 f.write(f"**目标服务器:** {report_data['target_servers']['web']}\\n")
@@ -502,7 +502,7 @@ class ComprehensiveTest:
                 f.write("## 系统信息\\n\\n")
                 f.write(f"- **Python版本:** {report_data['system_info']['python_version']}\\n")
                 f.write(f"- **操作系统:** {report_data['system_info']['platform']}\\n")
-                f.write(f"- **测试工具:** YgoCard邮箱服务器综合性能测试工具\\n")
+                f.write(f"- **测试工具:** goposter邮箱服务器综合性能测试工具\\n")
             
             self.log(f"Markdown报告已保存: {md_file}")
             

@@ -143,4 +143,4 @@ curl -X POST http://localhost:8080/api/send \
 - **DKIM密钥不匹配**: 重新生成密钥对
 - **DMARC策略太严格**: 初期使用 `p=none`
 
-配置完成后，你的YgoCard邮箱将能够成功发送邮件到Gmail、Outlook等外部邮箱！
+配置完成后，你的goposter邮箱将能够成功发送邮件到Gmail、Outlook等外部邮箱！
