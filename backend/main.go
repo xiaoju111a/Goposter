@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -385,56 +386,56 @@ func (ms *MailServer) StartWebServer(port string) {
 	http.HandleFunc("/debug", ms.debugHandler)
 	
 	// API路由
-	http.HandleFunc("/api/mailboxes", ms.apiMailboxes)
-	http.HandleFunc("/api/emails/", ms.apiEmails)
-	http.HandleFunc("/api/emails/delete/", ms.apiDeleteEmail)
-	http.HandleFunc("/api/send", ms.apiSendEmail)
-	http.HandleFunc("/api/mailboxes/create", ms.apiCreateMailbox)
-	http.HandleFunc("/api/mailboxes/manage", ms.apiManageMailboxes)
+	http.HandleFunc("/api/mailboxes", ms.requireAuth(ms.apiMailboxes))
+	http.HandleFunc("/api/emails/", ms.requireAuth(ms.apiEmails))
+	http.HandleFunc("/api/emails/delete/", ms.requireAuth(ms.apiDeleteEmail))
+	http.HandleFunc("/api/send", ms.requireAuth(ms.apiSendEmail))
+	http.HandleFunc("/api/mailboxes/create", ms.requireAuth(ms.apiCreateMailbox))
+	http.HandleFunc("/api/mailboxes/manage", ms.requireAuth(ms.apiManageMailboxes))
 	http.HandleFunc("/api/login", ms.apiLogin)
 	http.HandleFunc("/api/logout", ms.apiLogout)
-	http.HandleFunc("/api/stats", ms.apiStats)
-	http.HandleFunc("/api/dns/config", ms.apiDNSConfig)
+	http.HandleFunc("/api/stats", ms.requireAuth(ms.apiStats))
+	http.HandleFunc("/api/dns/config", ms.requireAuth(ms.apiDNSConfig))
 	
 	// JWT认证API路由
 	http.HandleFunc("/api/auth/login", ms.apiAuthLogin)
-	http.HandleFunc("/api/auth/logout", ms.apiAuthLogout)
+	http.HandleFunc("/api/auth/logout", ms.requireAuth(ms.apiAuthLogout))
 	http.HandleFunc("/api/auth/refresh", ms.apiAuthRefresh)
-	http.HandleFunc("/api/auth/2fa/enable", ms.apiAuth2FAEnable)
-	http.HandleFunc("/api/auth/2fa/disable", ms.apiAuth2FADisable)
-	http.HandleFunc("/api/auth/2fa/verify", ms.apiAuth2FAVerify)
-	http.HandleFunc("/api/auth/2fa/status", ms.apiAuth2FAStatus)
+	http.HandleFunc("/api/auth/2fa/enable", ms.requireAuth(ms.apiAuth2FAEnable))
+	http.HandleFunc("/api/auth/2fa/disable", ms.requireAuth(ms.apiAuth2FADisable))
+	http.HandleFunc("/api/auth/2fa/verify", ms.requireAuth(ms.apiAuth2FAVerify))
+	http.HandleFunc("/api/auth/2fa/status", ms.requireAuth(ms.apiAuth2FAStatus))
 	
 	// SMTP中继API
-	http.HandleFunc("/api/relay/config", ms.apiRelayConfig)
-	http.HandleFunc("/api/relay/providers", ms.apiRelayProviders)
-	http.HandleFunc("/api/relay/test", ms.apiRelayTest)
-	http.HandleFunc("/api/relay/status", ms.apiRelayStatus)
+	http.HandleFunc("/api/relay/config", ms.requireAdmin(ms.apiRelayConfig))
+	http.HandleFunc("/api/relay/providers", ms.requireAdmin(ms.apiRelayProviders))
+	http.HandleFunc("/api/relay/test", ms.requireAdmin(ms.apiRelayTest))
+	http.HandleFunc("/api/relay/status", ms.requireAdmin(ms.apiRelayStatus))
 	
 	// 搜索API
-	http.HandleFunc("/api/search", ms.apiSearch)
-	http.HandleFunc("/api/search/suggest", ms.apiSearchSuggestions)
+	http.HandleFunc("/api/search", ms.requireAuth(ms.apiSearch))
+	http.HandleFunc("/api/search/suggest", ms.requireAuth(ms.apiSearchSuggestions))
 	
 	// 附件处理API
-	http.HandleFunc("/api/attachments/", ms.apiAttachments)
-	http.HandleFunc("/api/attachments/inline/", ms.apiInlineAttachments)
+	http.HandleFunc("/api/attachments/", ms.requireAuth(ms.apiAttachments))
+	http.HandleFunc("/api/attachments/inline/", ms.requireAuth(ms.apiInlineAttachments))
 	
 	// 用户管理API
-	http.HandleFunc("/api/admin/users", ms.apiAdminUsers)
-	http.HandleFunc("/api/admin/users/create", ms.apiAdminCreateUser)
-	// http.HandleFunc("/api/admin/users/delete", ms.apiAdminDeleteUser)
-	http.HandleFunc("/api/admin/mailboxes", ms.apiAdminMailboxes)
-	http.HandleFunc("/api/admin/mailboxes/create", ms.apiAdminCreateMailbox)
-	// http.HandleFunc("/api/admin/mailboxes/delete", ms.apiAdminDeleteMailbox)
-	// http.HandleFunc("/api/admin/mailboxes/assign", ms.apiAdminAssignMailbox)
+	http.HandleFunc("/api/admin/users", ms.requireAdmin(ms.apiAdminUsers))
+	http.HandleFunc("/api/admin/users/create", ms.requireAdmin(ms.apiAdminCreateUser))
+	// http.HandleFunc("/api/admin/users/delete", ms.requireAdmin(ms.apiAdminDeleteUser))
+	http.HandleFunc("/api/admin/mailboxes", ms.requireAdmin(ms.apiAdminMailboxes))
+	http.HandleFunc("/api/admin/mailboxes/create", ms.requireAdmin(ms.apiAdminCreateMailbox))
+	// http.HandleFunc("/api/admin/mailboxes/delete", ms.requireAdmin(ms.apiAdminDeleteMailbox))
+	// http.HandleFunc("/api/admin/mailboxes/assign", ms.requireAdmin(ms.apiAdminAssignMailbox))
 	
 	// 邮件转发API
-	http.HandleFunc("/api/forwarding/settings", ms.apiForwardingSettings)
-	http.HandleFunc("/api/forwarding/update", ms.apiForwardingUpdate)
+	http.HandleFunc("/api/forwarding/settings", ms.requireAuth(ms.apiForwardingSettings))
+	http.HandleFunc("/api/forwarding/update", ms.requireAuth(ms.apiForwardingUpdate))
 	
 	// 用户邮箱访问API
-	http.HandleFunc("/api/user/mailboxes", ms.apiUserMailboxes)
-	http.HandleFunc("/api/user/emails/", ms.apiUserEmails)
+	http.HandleFunc("/api/user/mailboxes", ms.requireAuth(ms.apiUserMailboxes))
+	http.HandleFunc("/api/user/emails/", ms.requireAuth(ms.apiUserEmails))
 	
 	// 系统配置API
 	http.HandleFunc("/api/config", ms.apiConfig)
@@ -443,18 +444,11 @@ func (ms *MailServer) StartWebServer(port string) {
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, nil))
 }
 
-// API处理方法
-func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	
-	// JWT鉴权验证
+// JWT验证中间件
+func (ms *MailServer) validateJWT(r *http.Request) (*JWTClaims, error) {
 	token := r.Header.Get("Authorization")
 	if token == "" {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
+		return nil, fmt.Errorf("authorization header required")
 	}
 	
 	// 移除Bearer前缀
@@ -465,13 +459,63 @@ func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
 	// 验证JWT token
 	claims, err := ms.userAuth.ValidateJWTToken(token)
 	if err != nil {
-		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-		return
+		return nil, fmt.Errorf("invalid or expired token: %v", err)
 	}
 	
 	// 检查token是否过期
 	if claims.ExpiresAt < time.Now().Unix() {
-		http.Error(w, "Token expired", http.StatusUnauthorized)
+		return nil, fmt.Errorf("token expired")
+	}
+	
+	return claims, nil
+}
+
+// JWT验证中间件包装函数
+func (ms *MailServer) requireAuth(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, err := ms.validateJWT(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		
+		// 将claims信息存储到context中，供后续处理使用
+		ctx := context.WithValue(r.Context(), "claims", claims)
+		handler(w, r.WithContext(ctx))
+	}
+}
+
+// 管理员权限验证中间件
+func (ms *MailServer) requireAdmin(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, err := ms.validateJWT(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		
+		if !claims.IsAdmin {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+		
+		// 将claims信息存储到context中，供后续处理使用
+		ctx := context.WithValue(r.Context(), "claims", claims)
+		handler(w, r.WithContext(ctx))
+	}
+}
+
+// API处理方法
+func (ms *MailServer) apiSendEmail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// 从context获取claims信息
+	claims, ok := r.Context().Value("claims").(*JWTClaims)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	
