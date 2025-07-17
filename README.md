@@ -4,7 +4,7 @@
 [![React version](https://img.shields.io/badge/React-18-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**goposter Mail** 是一个基于 Go 和 React 构建的现代化、高性能、安全的企业级邮件解决方案。它支持自定义域名部署，提供无限邮箱别名、银行级安全特性和媲美商业产品的用户体验。
+**Goposter Mail** 是一个基于 Go 和 React 构建的现代化、高性能、安全的企业级邮件解决方案。它支持自定义域名部署，提供无限邮箱别名和支持用户隔离。
 
 ---
 
